@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "serve": "vite preview",
-    "build": "vite build",
+    "vite-build": "vite build",
+    "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
     "dev": "vite",
     "gh-pages-deploy": "node scripts/gh-pages-deploy.js"
