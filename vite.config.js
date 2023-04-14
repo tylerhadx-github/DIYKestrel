@@ -6,7 +6,7 @@ const path = require('path')
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: '/LoraText/',
+  base: 'https://tylerhadx-github.github.io/LoraText/',
   plugins: [
     vue(),
     // https://github.com/vuetifyjs/vuetify-loader/tree/next/packages/vite-plugin
