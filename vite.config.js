@@ -1,12 +1,15 @@
-import { defineConfig } from 'vite'
+// Plugins
 import vue from '@vitejs/plugin-vue'
 import vuetify from 'vite-plugin-vuetify'
 
-const path = require('path')
+
+import { defineConfig } from 'vite'
+import { fileURLToPath, URL } from 'node:url'
+
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: 'https://tylerhadx-github.github.io/LoraText/',
+  base: '/',
   plugins: [
     vue(),
     // https://github.com/vuetifyjs/vuetify-loader/tree/next/packages/vite-plugin
@@ -17,7 +20,7 @@ export default defineConfig({
   define: { 'process.env': {} },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'src'),
+      '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   }
   /* remove the need to specify .vue files https://vitejs.dev/config/#resolve-extensions
