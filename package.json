@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "serve": "vite preview",
-    "build": "vite build --base=/LoraText/",
+    "build": "vite build ",
     "preview": "vite preview",
     "lint": "vue-cli-service lint",
     "dev": "vite"
