@@ -31,12 +31,15 @@ export default defineConfig({
           {
             src:'img/logo.svg',
             size: '488x424',
-            type: 'image/svg+xml	'
+            type: 'image/svg+xml',
+            purpose: "any"
+
           },
           {
             src: 'img/lora.png',
             size: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: "any"
           }
         ]
       }
