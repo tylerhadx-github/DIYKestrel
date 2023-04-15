@@ -29,12 +29,12 @@ export default defineConfig({
         display: "standalone",
         icons:[
           {
-            src:'assets/logo.svg',
+            src:'img/logo.svg',
             size: '488x424',
             type: 'image/svg+xml	'
           },
           {
-            src: 'assets/lora.png',
+            src: 'img/lora.png',
             size: '512x512',
             type: 'image/png'
           }
