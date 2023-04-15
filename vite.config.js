@@ -1,6 +1,7 @@
 // Plugins
 import vue from '@vitejs/plugin-vue'
 import vuetify from 'vite-plugin-vuetify'
+import { VitePWA } from 'vite-plugin-pwa'
 
 
 import { defineConfig } from 'vite'
@@ -15,6 +16,19 @@ export default defineConfig({
     // https://github.com/vuetifyjs/vuetify-loader/tree/next/packages/vite-plugin
     vuetify({
       autoImport: true,
+    }),
+    VitePWA({
+      registerType: 'autoUpdate',
+      injectRegister: 'auto',
+      manifest:{
+        name: 'LoraToArduino',
+        short_name: 'Lora',
+        description: 'offline messenger',
+        theme_color: "#fff",
+        background_color: "#fff",
+        display: "standalone",
+        icons:[]
+      }
     })
   ],
   define: { 'process.env': {} },
