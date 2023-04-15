@@ -27,7 +27,18 @@ export default defineConfig({
         theme_color: "#fff",
         background_color: "#fff",
         display: "standalone",
-        icons:[]
+        icons:[
+          {
+            src:'assets/logo.svg',
+            size: '488x424',
+            type: 'image/svg+xml	'
+          },
+          {
+            src: 'assets/lora.png',
+            size: '512x512',
+            type: 'image/png'
+          }
+        ]
       }
     })
   ],
