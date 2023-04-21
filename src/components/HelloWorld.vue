@@ -131,11 +131,25 @@ export default {
                 if (!msg.includes("+")) {
                   lmessages.push(x);
                 }
+                if(document.hidden){
+                  createNotification(msg);
+                }
+
               }
             );
           });
         });
     };
+    function createNotification(msg){
+  const title = "Lora Recieved New Message";
+  const img = '/img/lora.png';
+  const options ={
+    body: msg,
+    icon: img,
+  };
+
+  new Notification(title,options);
+}
 
     function makeid(length) {
       let result = "";
@@ -202,25 +216,14 @@ export default {
       this.showMsg = false;
       nextTick(() => {
         this.lmessages = getRecievedMessages();
-        var tempM = this.lmessages[this.lmessages.length -1];
        
-        if(tempM != this.lastMessageRecieved){
-          this.lastMessageRecieved = tempM;
-          if(document.hidden){
-          this.createNotification(this.lmessages[this.lmessages.length -1]);
-        }
-      }
         this.showMsg = true;
       });
       this.$forceUpdate();
-    }, 1000);
+    }, 5000);
   },
   methods: {
-    testNotifcation(){
-      setTimeout(50000);
-      this.createNotification("test");
 
-    },
     sentMessage(msg) {
       this.sendMessage(msg);
       this.tempMessage = null;
@@ -243,16 +246,7 @@ export default {
     .then(() => console.log("Registered background sync"))
     .catch(err => console.error("Error registering background sync", err))
 },
-createNotification(msg){
-  const title = "Lora Recieved New Message";
-  const img = '/img/lora.png';
-  const options ={
-    body: msg,
-    icon: img,
-  };
 
-  new Notification(title,options);
-},
   },
   watch: {},
 };
