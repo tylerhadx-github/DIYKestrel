@@ -12,8 +12,8 @@
             <v-btn v-if="!notificationPermission" @click="requestBackgroundSync()">
               Request Background Notifications
             </v-btn>
-            <v-btn @click="testNotifcation">
-            Test Notification
+            <v-btn @click="toggleMap()">
+              Show Map
           </v-btn>
           </div>
           <div v-if="device">
@@ -75,6 +75,7 @@
       counter
     ></v-text-field>
     <br />
+    <MapVue v-if="showMap"></MapVue>
   </v-container>
 </template>
   
@@ -82,6 +83,7 @@
 import ChatVue from "./Chat.vue";
 import { nextTick } from "vue";
 import { pausableWatch, useBluetooth } from "@vueuse/core";
+import MapVue from "./Map.vue"
 
 var lmessages = [];
 var msgObj = {
@@ -94,7 +96,7 @@ const getRecievedMessages = () => {
 };
 export default {
   name: "HelloWorld",
-  components: { ChatVue },
+  components: { ChatVue, MapVue },
   setup() {
     const { isConnected, isSupported, device, requestDevice, server } =
       useBluetooth({
@@ -207,6 +209,7 @@ export default {
     showMsg: false,
     notificationPermission: false,
     lastMessageRecieved: "",
+    showMap: false,
   }),
   created() {
     this.lmessages = getRecievedMessages();
@@ -223,7 +226,9 @@ export default {
     }, 5000);
   },
   methods: {
-
+    toggleMap(){
+        this.showMap = !this.showMap;
+    },
     sentMessage(msg) {
       this.sendMessage(msg);
       this.tempMessage = null;

@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HelloWorld from '../components/HelloWorld.vue'
-import BTTest from '../components/BTTest.vue'
+import Map from '../components/Map.vue'
 
 const routes = [
   {
@@ -9,9 +9,9 @@ const routes = [
     component: HelloWorld
   },
   {
-    path: '/test',
-    name: 'test',
-    component: BTTest
+    path: '/Map',
+    name: 'Map',
+    component: Map
   },
   {
     path: '/chat/:sharedKey',
