@@ -20,16 +20,16 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
-      manifest:{
+      manifest: {
         name: 'LoraToArduino',
         short_name: 'LoraText',
         description: 'offline messenger',
         theme_color: "#4DBA87",
         background_color: "#000000",
         display: "standalone",
-        icons:[
+        icons: [
           {
-            src:'img/logo.svg',
+            src: 'img/logo.svg',
             size: '488x424',
             type: 'image/svg+xml',
             purpose: "any"

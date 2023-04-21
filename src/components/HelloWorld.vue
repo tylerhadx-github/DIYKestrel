@@ -12,6 +12,9 @@
             <v-btn v-if="!notificationPermission" @click="requestBackgroundSync()">
               Request Background Notifications
             </v-btn>
+            <v-btn @click="testNotifcation">
+            Test Notification
+          </v-btn>
           </div>
           <div v-if="device">
             <p>Device Name: {{ device.name }}</p>
@@ -188,7 +191,8 @@ export default {
     messages: [],
     tempMessage: null,
     showMsg: false,
-    notificationPermission: false
+    notificationPermission: false,
+    lastMessageRecieved: "",
   }),
   created() {
     this.lmessages = getRecievedMessages();
@@ -198,12 +202,25 @@ export default {
       this.showMsg = false;
       nextTick(() => {
         this.lmessages = getRecievedMessages();
+        var tempM = this.lmessages[this.lmessages.length -1];
+       
+        if(tempM != this.lastMessageRecieved){
+          this.lastMessageRecieved = tempM;
+          if(document.hidden){
+          this.createNotification(this.lmessages[this.lmessages.length -1]);
+        }
+      }
         this.showMsg = true;
       });
       this.$forceUpdate();
     }, 1000);
   },
   methods: {
+    testNotifcation(){
+      setTimeout(50000);
+      this.createNotification("test");
+
+    },
     sentMessage(msg) {
       this.sendMessage(msg);
       this.tempMessage = null;
@@ -222,10 +239,20 @@ export default {
     }
 
     navigator.serviceWorker.ready
-    .then(registration => registration.sync.register('syncAttendees'))
+    .then(registration => registration.sync.register('syncMessages'))
     .then(() => console.log("Registered background sync"))
     .catch(err => console.error("Error registering background sync", err))
-}
+},
+createNotification(msg){
+  const title = "Lora Recieved New Message";
+  const img = '/img/lora.png';
+  const options ={
+    body: msg,
+    icon: img,
+  };
+
+  new Notification(title,options);
+},
   },
   watch: {},
 };
