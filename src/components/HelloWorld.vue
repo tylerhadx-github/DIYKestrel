@@ -8,14 +8,18 @@
             <v-btn @click="requestDevice().then((_device) => {})">
               Request Bluetooth Device
             </v-btn>
-
-            <v-btn v-if="!notificationPermission" @click="requestBackgroundSync()">
-              Request Background Notifications
-            </v-btn>
-            <v-btn @click="toggleMap()">
-              Show Map
-          </v-btn>
           </div>
+        </v-row>
+        <v-row>
+          <v-btn
+            v-if="!notificationPermission"
+            @click="requestBackgroundSync()"
+          >
+            Request Background Notifications
+          </v-btn>
+          <v-btn @click="toggleMap()"> Show Map </v-btn>
+        </v-row>
+        <v-row>
           <div v-if="device">
             <p>Device Name: {{ device.name }}</p>
           </div>
@@ -48,10 +52,10 @@
         ]"
       >
         <span v-if="m.yours" class="blue--text mr-3"
-          ><v-chip color="green" size="x-large">{{ m.text }}</v-chip></span
+          ><v-chip color="green" size="x-large" class="text-wrap">{{ m.text }}</v-chip></span
         >
         <span v-else class="blue--text ml-3"
-          ><v-chip color="blue" size="x-large">{{ m.text }}</v-chip></span
+          ><v-chip color="blue" size="x-large" class="text-wrap">{{ decryptMessage(m) }}</v-chip></span
         >
       </div>
     </div>
@@ -71,9 +75,10 @@
       type="text"
       @click:append="sentMessage(tempMessage)"
       @keydown.enter="sentMessage(tempMessage)"
-      maxlength="35"
+      maxlength="180"
       counter
     ></v-text-field>
+    <!-- 34 -->
     <br />
     <MapVue v-if="showMap"></MapVue>
   </v-container>
@@ -83,7 +88,10 @@
 import ChatVue from "./Chat.vue";
 import { nextTick } from "vue";
 import { pausableWatch, useBluetooth } from "@vueuse/core";
-import MapVue from "./Map.vue"
+import MapVue from "./Map.vue";
+
+
+
 
 var lmessages = [];
 var msgObj = {
@@ -91,6 +99,7 @@ var msgObj = {
   text: null,
   yours: false,
 };
+var lsharedKey = "";
 const getRecievedMessages = () => {
   return lmessages;
 };
@@ -107,6 +116,9 @@ export default {
         ],
         optionalServices: ["00007070-0000-1000-8000-00805f9b34fb"],
       });
+
+
+      var strBuild = "";
 
     const getOtherMessage = async () => {
       var service = await server.value.getPrimaryService(
@@ -125,34 +137,57 @@ export default {
                 var enc = new TextDecoder("utf-8");
                 var msg = enc.decode(value);
                 console.log(msg);
-                var x = Object.assign({}, msgObj);
-                x.id = makeid(20);
-                x.text = msg;
-                x.yours = false;
 
+                if(msg.startsWith('*|')){
+
+                  var x = Object.assign({}, msgObj);
+                x.id = makeid(20);
+                x.text = strBuild +msg.substring(2);
+                x.yours = false;
                 if (!msg.includes("+")) {
                   lmessages.push(x);
                 }
-                if(document.hidden){
-                  createNotification(msg);
+                if (document.hidden) {
+                  createNotification(x);
                 }
-
+                strBuild = "";
+                }
+                else{
+                  strBuild = strBuild + msg.substring(2);
+                }
               }
             );
           });
         });
     };
-    function createNotification(msg){
-  const title = "Lora Recieved New Message";
-  const img = '/img/lora.png';
-  const options ={
-    body: msg,
-    icon: img,
-  };
+    function createNotification(msg) {
+      // var test =  decryptMessage(msg);
+      // if(test){
+      const title = "Lora Recieved New Message";
+      const img = "/img/lora.png";
+      const options = {
+        body:"Message Recieved",
+        icon: img,
+      };
 
-  new Notification(title,options);
-}
+      new Notification(title, options);
+    // }
+    }
+    
+    function decryptMessage(message) {
+      try{
+      const decryptedText = AES.decrypt(
+        message.text,
+        lsharedKey
+      ).toString(Utf8);
+      return decryptedText;
 
+    } catch(ex){
+      lmessages= lmessages.filter(x=>  x.Id !== message.Id);
+      console.log("message not decrypted");
+      return null;
+    }
+    }
     function makeid(length) {
       let result = "";
       const characters =
@@ -184,14 +219,42 @@ export default {
       );
       var enc = new TextEncoder(); // always utf-8
       await stringCharacteristics.writeValueWithResponse(enc.encode(msg));
-
-      var x = Object.assign({}, msgObj);
-      x.id = makeid(20);
-      x.text = msg;
-      x.yours = true;
-
-      lmessages.push(x);
     };
+
+    const timer = (ms) => new Promise((res) => setTimeout(res, ms));
+
+    const batchSendMessage = async (msg) => {
+      var service = await server.value.getPrimaryService(
+        "00006969-0000-1000-8000-00805f9b34fb"
+      );
+      var stringCharacteristics = await service.getCharacteristic(
+        "00009876-0000-1000-8000-00805f9b34fb"
+      );
+
+      
+
+      if (msg.length < 30) {
+        sendMessage("*|" + msg);
+      } else {
+        if (msg.length < 301) {
+          //try to break them into ten messages 30 chars with 0| 1| and count down
+          var batch = msg.match(/.{1,30}/g);
+          console.log(batch);
+          loopMessage(batch);
+        }
+      }
+    };
+    async function loopMessage(batch) {
+      for (var i = 0; i < batch.length ; i++) {
+        var prefix = i;
+        if (i == batch.length - 1) {
+          prefix = "*";
+        }
+        sendMessage(prefix + "|" + batch[i]);
+        await timer(2000);
+      }
+    }
+
     return {
       isConnected,
       isSupported,
@@ -199,6 +262,7 @@ export default {
       requestDevice,
       server,
       sendMessage,
+      batchSendMessage,
       getOtherMessage,
     };
   },
@@ -219,41 +283,89 @@ export default {
       this.showMsg = false;
       nextTick(() => {
         this.lmessages = getRecievedMessages();
-       
+
         this.showMsg = true;
       });
       this.$forceUpdate();
     }, 5000);
   },
   methods: {
-    toggleMap(){
-        this.showMap = !this.showMap;
+    toggleMap() {
+      this.showMap = !this.showMap;
     },
     sentMessage(msg) {
-      this.sendMessage(msg);
+      var x = Object.assign({}, msgObj);
+      x.id = this.makeidvue(20);
+      x.text = msg;
+      x.yours = true;
+      this.lmessages.push(x);
+
+      var hashed= this.hashMessage(msg);
+      this.batchSendMessage(hashed);
       this.tempMessage = null;
     },
     requestBackgroundSync() {
       Notification.requestPermission((permission) => {
         if (permission === "granted") {
           this.registerBackgroundSync();
-          this.notificationPermission =true;
+          this.notificationPermission = true;
         } else console.error("Permission was not granted.");
       });
     },
     registerBackgroundSync() {
-    if (!navigator.serviceWorker){
-        return console.error("Service Worker not supported")
+      if (!navigator.serviceWorker) {
+        return console.error("Service Worker not supported");
+      }
+
+      navigator.serviceWorker.ready
+        .then((registration) => registration.sync.register("syncMessages"))
+        .then(() => console.log("Registered background sync"))
+        .catch((err) =>
+          console.error("Error registering background sync", err)
+        );
+    },
+    hashMessage(str) {
+      const encryptedText = this.$CryptoJS.AES.encrypt(
+        str,
+        this.sharedKey
+      ).toString();
+      return encryptedText;
+    },
+    decryptMessage(message) {
+      try{
+      const decryptedText = this.$CryptoJS.AES.decrypt(
+        message.text,
+        this.sharedKey
+      ).toString(this.$CryptoJS.enc.Utf8);
+      return decryptedText;
+
+    } catch(ex){
+      lmessages= lmessages.filter(x=>  x.Id !== message.Id);
+      console.log("message not decrypted");
+      return null;
     }
-
-    navigator.serviceWorker.ready
-    .then(registration => registration.sync.register('syncMessages'))
-    .then(() => console.log("Registered background sync"))
-    .catch(err => console.error("Error registering background sync", err))
-},
-
+    },
+    makeidvue(length) {
+      let result = "";
+      const characters =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      const charactersLength = characters.length;
+      let counter = 0;
+      while (counter < length) {
+        result += characters.charAt(
+          Math.floor(Math.random() * charactersLength)
+        );
+        counter += 1;
+      }
+      return result;
+    }
   },
-  watch: {},
+  watch: {
+    sharedKey(){
+      lmessages = [];
+      lsharedKey = this.sharedKey;
+    },
+  },
 };
 </script>
   
