@@ -18,7 +18,6 @@ import Point from "@arcgis/core/geometry/Point";
 export default {
   name: "Map",
   data: () => ({
-    map: null,
     view: null,
     phoneLocationRefreshInterval: 30000
   }),
@@ -50,43 +49,40 @@ export default {
       });
       /* eslint-enable no-unused-vars */
 
-      const point = new Point({
-        x: -103.19455082423462,
-        y: 44.070438441736194,
-      });
+   
 
       var locateBtn = new Locate({
         view: this.view,
+        
       });
     //   var searchWidget = new Search({
     //     view: this.view,
     //     popupOpenOnSelect: false,
     //   });
       this.view.ui.add(locateBtn, {
-        position: "top-left",
+        position: "top-right",
       });
     //   this.view.ui.add(searchWidget, {
     //     position: "top-right",
     //   });
-      var basemapGallery = new BasemapGallery({
-        view: this.view,
-        container: document.createElement("div"),
-      });
-      var bgExpand = new Expand({
-        view: this.view,
-        content: basemapGallery,
-      });
-      basemapGallery.watch("activeBasemap", function () {
-        var mobileSize =
-          this.view.heightBreakpoint === "xsmall" ||
-          this.view.widthBreakpoint === "xsmall";
-        if (mobileSize) {
-          bgExpand.collapse();
-        }
-      });
-      this.view.ui.add(bgExpand, "top-right");
+    //   var basemapGallery = new BasemapGallery({
+    //     view: this.view,
+    //     container: document.createElement("div"),
+    //   });
+    //   var bgExpand = new Expand({
+    //     view: this.view,
+    //     content: basemapGallery,
+    //   });
+    //   basemapGallery.watch("activeBasemap", function () {
+    //     var mobileSize =
+    //       this.view.heightBreakpoint === "xsmall" ||
+    //       this.view.widthBreakpoint === "xsmall";
+    //     if (mobileSize) {
+    //       bgExpand.collapse();
+    //     }
+    //   });
+    //   this.view.ui.add(bgExpand, "top-right");
 
-      var _this = this;
     },
     getPhoneLocation() {
       var _this = this;
