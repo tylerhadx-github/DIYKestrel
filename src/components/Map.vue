@@ -17,13 +17,22 @@ import Point from "@arcgis/core/geometry/Point";
 
 export default {
   name: "Map",
+  props:['otherLatLong'],
   data: () => ({
     view: null,
-    phoneLocationRefreshInterval: 30000
+    phoneLocationRefreshInterval: 30000,
+    msgObj: {
+      id: 0,
+  text: null,
+  yours: true,
+    },
+    otherLatLong: {
+      Lat: null,
+      Long: null,
+    },
   }),
   mounted() {
     var _this = this;
-
     this.getPhoneLocation();
     this.intervalID = setInterval(function () {
       _this.getPhoneLocation();
@@ -51,17 +60,17 @@ export default {
 
    
 
-      var locateBtn = new Locate({
-        view: this.view,
+      // var locateBtn = new Locate({
+      //   view: this.view,
         
-      });
+      // });
     //   var searchWidget = new Search({
     //     view: this.view,
     //     popupOpenOnSelect: false,
     //   });
-      this.view.ui.add(locateBtn, {
-        position: "top-right",
-      });
+      // this.view.ui.add(locateBtn, {
+      //   position: "top-right",
+      // });
     //   this.view.ui.add(searchWidget, {
     //     position: "top-right",
     //   });
@@ -98,10 +107,17 @@ export default {
     },
     pushLocationMessage(coords) {
       var msg = "sending location: " + coords.latitude + "," + coords.longitude;
+      console.log(msg);
+
+    
+                
+
     //   var hsm = this.hashMessage(msg);
     //   var dsm = this.decryptMessage(hsm);
     //   console.log("unhash: " + dsm);
-    console.log(msg);
+    this.$emit("messageSent",  coords.latitude + "," + coords.longitude);
+
+    
     },
   },
 };

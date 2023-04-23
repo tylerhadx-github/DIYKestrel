@@ -17,7 +17,9 @@
           >
             Request Background Notifications
           </v-btn>
-          <v-btn @click="toggleMap()"> Show Map </v-btn>
+          <v-btn @click="toggleMap()">
+            <span v-if="showMap">Hide </span><span v-else>Show </span>&nbsp;Map
+          </v-btn>
         </v-row>
         <v-row>
           <div v-if="device">
@@ -37,11 +39,6 @@
     </v-card>
   </v-container>
   <v-container>
-    <!-- <ChatVue
-        :sharedKey="sharedKey"
-        :messages="messages"
-        @messageSent="(msg) => sentMessage(msg)"
-      ></ChatVue> -->
     <div v-if="showMsg && isConnected">
       <div
         v-for="m in lmessages"
@@ -52,10 +49,14 @@
         ]"
       >
         <span v-if="m.yours" class="blue--text mr-3"
-          ><v-chip color="green" size="x-large" class="text-wrap">{{ m.text }}</v-chip></span
+          ><v-chip color="green" size="x-large" class="text-wrap" v-if="!m.isLocation">{{
+            m.text
+          }}</v-chip></span
         >
         <span v-else class="blue--text ml-3"
-          ><v-chip color="blue" size="x-large" class="text-wrap">{{ decryptMessage(m) }}</v-chip></span
+          ><v-chip color="blue" size="x-large" class="text-wrap" v-if="!m.isLocation">{{
+            decryptMessage(m)
+          }}</v-chip></span
         >
       </div>
     </div>
@@ -73,14 +74,14 @@
       clearable
       label="Message"
       type="text"
-      @click:append="sentMessage(tempMessage)"
-      @keydown.enter="sentMessage(tempMessage)"
+      @click:append="sentMessage(tempMessage,false)"
+      @keydown.enter="sentMessage(tempMessage,false)"
       maxlength="180"
       counter
     ></v-text-field>
     <!-- 34 -->
     <br />
-    <MapVue v-if="showMap"></MapVue>
+    <MapVue v-if="showMap" :otherLatLong="otherLatLong"  @messageSent="(msg) => sentMessage(msg,true)"></MapVue>
   </v-container>
 </template>
   
@@ -90,19 +91,18 @@ import { nextTick } from "vue";
 import { pausableWatch, useBluetooth } from "@vueuse/core";
 import MapVue from "./Map.vue";
 
-
-
-
 var lmessages = [];
 var msgObj = {
   id: 0,
   text: null,
   yours: false,
+  isLocation: false
 };
 var lsharedKey = "";
 const getRecievedMessages = () => {
   return lmessages;
 };
+
 export default {
   name: "HelloWorld",
   components: { ChatVue, MapVue },
@@ -117,8 +117,7 @@ export default {
         optionalServices: ["00007070-0000-1000-8000-00805f9b34fb"],
       });
 
-
-      var strBuild = "";
+    var strBuild = "";
 
     const getOtherMessage = async () => {
       var service = await server.value.getPrimaryService(
@@ -138,21 +137,20 @@ export default {
                 var msg = enc.decode(value);
                 console.log(msg);
 
-                if(msg.startsWith('*|')){
-
+                if (msg.startsWith("*|")) {
                   var x = Object.assign({}, msgObj);
-                x.id = makeid(20);
-                x.text = strBuild +msg.substring(2);
-                x.yours = false;
-                if (!msg.includes("+")) {
-                  lmessages.push(x);
-                }
-                if (document.hidden) {
-                  createNotification(x);
-                }
-                strBuild = "";
-                }
-                else{
+                  x.id = makeid(20);
+                  x.text = strBuild + msg.substring(2);
+                  x.yours = false;
+
+                  if (!msg.includes("+")) {
+                    lmessages.push(x);
+                  }
+                  if (document.hidden) {
+                    createNotification(x);
+                  }
+                  strBuild = "";
+                } else {
                   strBuild = strBuild + msg.substring(2);
                 }
               }
@@ -160,33 +158,32 @@ export default {
           });
         });
     };
+
     function createNotification(msg) {
       // var test =  decryptMessage(msg);
       // if(test){
       const title = "Lora Recieved New Message";
       const img = "/img/lora.png";
       const options = {
-        body:"Message Recieved",
+        body: "Message Recieved",
         icon: img,
       };
 
       new Notification(title, options);
-    // }
+      // }
     }
-    
-    function decryptMessage(message) {
-      try{
-      const decryptedText = AES.decrypt(
-        message.text,
-        lsharedKey
-      ).toString(Utf8);
-      return decryptedText;
 
-    } catch(ex){
-      lmessages= lmessages.filter(x=>  x.Id !== message.Id);
-      console.log("message not decrypted");
-      return null;
-    }
+    function decryptMessage(message) {
+      try {
+        const decryptedText = AES.decrypt(message.text, lsharedKey).toString(
+          Utf8
+        );
+        return decryptedText;
+      } catch (ex) {
+        lmessages = lmessages.filter((x) => x.Id !== message.Id);
+        console.log("message not decrypted");
+        return null;
+      }
     }
     function makeid(length) {
       let result = "";
@@ -231,8 +228,6 @@ export default {
         "00009876-0000-1000-8000-00805f9b34fb"
       );
 
-      
-
       if (msg.length < 30) {
         sendMessage("*|" + msg);
       } else {
@@ -245,7 +240,7 @@ export default {
       }
     };
     async function loopMessage(batch) {
-      for (var i = 0; i < batch.length ; i++) {
+      for (var i = 0; i < batch.length; i++) {
         var prefix = i;
         if (i == batch.length - 1) {
           prefix = "*";
@@ -274,6 +269,10 @@ export default {
     notificationPermission: false,
     lastMessageRecieved: "",
     showMap: false,
+    otherLatLong: {
+      Lat: null,
+      Long: null,
+    },
   }),
   created() {
     this.lmessages = getRecievedMessages();
@@ -283,7 +282,6 @@ export default {
       this.showMsg = false;
       nextTick(() => {
         this.lmessages = getRecievedMessages();
-
         this.showMsg = true;
       });
       this.$forceUpdate();
@@ -293,14 +291,15 @@ export default {
     toggleMap() {
       this.showMap = !this.showMap;
     },
-    sentMessage(msg) {
+    sentMessage(msg, isLatLong =false) {
       var x = Object.assign({}, msgObj);
       x.id = this.makeidvue(20);
       x.text = msg;
       x.yours = true;
+      x.isLocation = isLatLong;
       this.lmessages.push(x);
 
-      var hashed= this.hashMessage(msg);
+      var hashed = this.hashMessage(msg);
       this.batchSendMessage(hashed);
       this.tempMessage = null;
     },
@@ -332,18 +331,22 @@ export default {
       return encryptedText;
     },
     decryptMessage(message) {
-      try{
-      const decryptedText = this.$CryptoJS.AES.decrypt(
-        message.text,
-        this.sharedKey
-      ).toString(this.$CryptoJS.enc.Utf8);
-      return decryptedText;
+      try {
+        const decryptedText = this.$CryptoJS.AES.decrypt(
+          message.text,
+          this.sharedKey
+        ).toString(this.$CryptoJS.enc.Utf8);
 
-    } catch(ex){
-      lmessages= lmessages.filter(x=>  x.Id !== message.Id);
-      console.log("message not decrypted");
-      return null;
-    }
+        if(this.detectLatLong(decryptedText)){
+          message.isLocation = true;
+        }
+        
+        return decryptedText;
+      } catch (ex) {
+        lmessages = lmessages.filter((x) => x.Id !== message.Id);
+        console.log("message not decrypted");
+        return null;
+      }
     },
     makeidvue(length) {
       let result = "";
@@ -358,10 +361,26 @@ export default {
         counter += 1;
       }
       return result;
-    }
+    },
+    detectLatLong(message) {
+      const regex =
+        /^[-+]?([1-8]?\d(\.\d+)?|90(\.0+)?),[-+]?(180(\.0+)?|((1[0-7]\d)|([1-9]?\d))(\.\d+)?)$/;
+      const match = message.match(regex);
+
+      if (match) {
+        const lat = parseFloat(match[1]);
+        const long = parseFloat(match[4]);
+        this.otherLatLong.Lat = lat;
+        this.otherLatLong.long = long;
+        console.log(`Latitude: ${lat}, Longitude: ${long}`);
+      } else {
+        console.log("No latitude and longitude found in string.");
+      }
+      return match;
+    },
   },
   watch: {
-    sharedKey(){
+    sharedKey() {
       lmessages = [];
       lsharedKey = this.sharedKey;
     },
