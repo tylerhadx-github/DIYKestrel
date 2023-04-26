@@ -4,8 +4,8 @@
       <v-card-title> LoRa Chat Application</v-card-title>
       <v-card-text>
         <v-row>
-          <div v-if="isSupported && !device">
-            <v-btn @click="requestDevice().then((_device) => {})">
+          <div v-if="isSupported  && !lisDeviceConnected">
+            <v-btn @click="requestDevice().then(async _device => { if(!isDeviceConnected && !firstTry){await server.value.device.gatt.connect() } isDeviceConnected = true; firstTry = false; device.addEventListener('gattserverdisconnected',onDisconnected)})">
               Request Bluetooth Device
             </v-btn>
           </div>
@@ -17,7 +17,8 @@
           >
             Request Background Notifications
           </v-btn>
-          <v-btn @click="toggleMap()">
+          <v-btn @click="toggleMap()"       :disabled="!device"
+>
             <span v-if="showMap">Hide </span><span v-else>Show </span>&nbsp;Map
           </v-btn>
         </v-row>
@@ -66,9 +67,10 @@
       v-model="tempMessage"
       append-icon="mdi-send"
       :rules="[
-        (v) => !v.includes(',') || 'COMMAs are BAD',
+        (v) =>  !v.includes(',') || 'COMMAs are BAD',
         (v) => !v.includes('+') || 'PLUS + are BAD',
       ]"
+      :disabled="!device"
       variant="filled"
       clear-icon="mdi-close-circle"
       clearable
@@ -79,18 +81,17 @@
       maxlength="180"
       counter
     ></v-text-field>
-    <!-- 34 -->
     <br />
-    <MapVue v-if="showMap" :otherLatLong="otherLatLong"  @messageSent="(msg) => sentMessage(msg,true)"></MapVue>
+    <MapVue v-if="showMap"  :otherLatLong="otherLatLong"  @messageSent="(msg) => {if(!sendingMessage){sentMessage(msg,true)}}"></MapVue>
   </v-container>
 </template>
   
   <script>
-import ChatVue from "./Chat.vue";
 import { nextTick } from "vue";
 import { pausableWatch, useBluetooth } from "@vueuse/core";
 import MapVue from "./Map.vue";
 
+var firstTry = true;
 var lmessages = [];
 var msgObj = {
   id: 0,
@@ -98,14 +99,20 @@ var msgObj = {
   yours: false,
   isLocation: false
 };
+var isDeviceConnected = true;
+// eslint-disable-next-line no-unused-vars
 var lsharedKey = "";
 const getRecievedMessages = () => {
   return lmessages;
 };
 
+
+const getConnectionStatus = () =>{
+  return isDeviceConnected;
+}
 export default {
   name: "HelloWorld",
-  components: { ChatVue, MapVue },
+  components: {  MapVue },
   setup() {
     const { isConnected, isSupported, device, requestDevice, server } =
       useBluetooth({
@@ -147,7 +154,7 @@ export default {
                     lmessages.push(x);
                   }
                   if (document.hidden) {
-                    createNotification(x);
+                    createNotification();
                   }
                   strBuild = "";
                 } else {
@@ -159,9 +166,8 @@ export default {
         });
     };
 
-    function createNotification(msg) {
-      // var test =  decryptMessage(msg);
-      // if(test){
+    function createNotification() {
+      
       const title = "Lora Recieved New Message";
       const img = "/img/lora.png";
       const options = {
@@ -170,21 +176,9 @@ export default {
       };
 
       new Notification(title, options);
-      // }
     }
 
-    function decryptMessage(message) {
-      try {
-        const decryptedText = AES.decrypt(message.text, lsharedKey).toString(
-          Utf8
-        );
-        return decryptedText;
-      } catch (ex) {
-        lmessages = lmessages.filter((x) => x.Id !== message.Id);
-        console.log("message not decrypted");
-        return null;
-      }
-    }
+
     function makeid(length) {
       let result = "";
       const characters =
@@ -208,6 +202,7 @@ export default {
     });
 
     const sendMessage = async (msg) => {
+      if(isDeviceConnected){
       var service = await server.value.getPrimaryService(
         "00006969-0000-1000-8000-00805f9b34fb"
       );
@@ -216,18 +211,15 @@ export default {
       );
       var enc = new TextEncoder(); // always utf-8
       await stringCharacteristics.writeValueWithResponse(enc.encode(msg));
+    }
+    else{
+      console.log("device disconnected")
+    }
     };
 
     const timer = (ms) => new Promise((res) => setTimeout(res, ms));
 
     const batchSendMessage = async (msg) => {
-      var service = await server.value.getPrimaryService(
-        "00006969-0000-1000-8000-00805f9b34fb"
-      );
-      var stringCharacteristics = await service.getCharacteristic(
-        "00009876-0000-1000-8000-00805f9b34fb"
-      );
-
       if (msg.length < 30) {
         sendMessage("*|" + msg);
       } else {
@@ -250,6 +242,10 @@ export default {
       }
     }
 
+    function onDisconnected(){
+      isDeviceConnected = false;
+      
+    }
     return {
       isConnected,
       isSupported,
@@ -259,9 +255,12 @@ export default {
       sendMessage,
       batchSendMessage,
       getOtherMessage,
+      isDeviceConnected,
+      onDisconnected
     };
   },
   data: () => ({
+    sendingMessage: false,
     sharedKey: null,
     messages: [],
     tempMessage: null,
@@ -273,6 +272,7 @@ export default {
       Lat: null,
       Long: null,
     },
+    lisDeviceConnected: false,
   }),
   created() {
     this.lmessages = getRecievedMessages();
@@ -281,6 +281,7 @@ export default {
     this.intervalID = setInterval(() => {
       this.showMsg = false;
       nextTick(() => {
+        this.lisDeviceConnected = getConnectionStatus();
         this.lmessages = getRecievedMessages();
         this.showMsg = true;
       });
@@ -292,6 +293,7 @@ export default {
       this.showMap = !this.showMap;
     },
     sentMessage(msg, isLatLong =false) {
+      this.sendingMessage = true;
       var x = Object.assign({}, msgObj);
       x.id = this.makeidvue(20);
       x.text = msg;
@@ -302,6 +304,7 @@ export default {
       var hashed = this.hashMessage(msg);
       this.batchSendMessage(hashed);
       this.tempMessage = null;
+      this.sendingMessage =false;
     },
     requestBackgroundSync() {
       Notification.requestPermission((permission) => {
@@ -326,7 +329,7 @@ export default {
     hashMessage(str) {
       const encryptedText = this.$CryptoJS.AES.encrypt(
         str,
-        this.sharedKey
+        this.sharedKey ? this.sharedKey.toLowerCase().trim() : ""
       ).toString();
       return encryptedText;
     },
@@ -334,7 +337,7 @@ export default {
       try {
         const decryptedText = this.$CryptoJS.AES.decrypt(
           message.text,
-          this.sharedKey
+          this.sharedKey.toLowerCase().trim()
         ).toString(this.$CryptoJS.enc.Utf8);
 
         if(this.detectLatLong(decryptedText)){
@@ -377,12 +380,12 @@ export default {
         console.log("No latitude and longitude found in string.");
       }
       return match;
-    },
+    }
   },
   watch: {
     sharedKey() {
       lmessages = [];
-      lsharedKey = this.sharedKey;
+      lsharedKey = this.sharedKey.toLowerCase().trim();
     },
   },
 };

@@ -10,13 +10,13 @@
  import esriConfig from "@arcgis/core/config";
 import Map from "@arcgis/core/Map";
 import MapView from "@arcgis/core/views/MapView";
-import Locate from "@arcgis/core/widgets/Locate";
-import BasemapGallery from "@arcgis/core/widgets/BasemapGallery";
-import Search from "@arcgis/core/widgets/Search";
-import Point from "@arcgis/core/geometry/Point";
+// import Locate from "@arcgis/core/widgets/Locate";
+// import BasemapGallery from "@arcgis/core/widgets/BasemapGallery";
+// import Search from "@arcgis/core/widgets/Search";
+// import Point from "@arcgis/core/geometry/Point";
 
 export default {
-  name: "Map",
+  name: "MapVue",
   props:['otherLatLong'],
   data: () => ({
     view: null,
@@ -26,10 +26,10 @@ export default {
   text: null,
   yours: true,
     },
-    otherLatLong: {
-      Lat: null,
-      Long: null,
-    },
+    // otherLatLong: {
+    //   Lat: null,
+    //   Long: null,
+    // },
   }),
   mounted() {
     var _this = this;
