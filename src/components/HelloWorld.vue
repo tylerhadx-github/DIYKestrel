@@ -1,26 +1,18 @@
+<!-- eslint-disable no-unused-vars -->
 <template>
   <v-container>
     <v-card>
       <v-card-title> LoRa Chat Application</v-card-title>
       <v-card-text>
         <v-row>
-          <v-alert
-            v-if="alert.show"
-            :type="alert.type"
-            :dismissible="alert.dismissible"
-            @click:dismiss="dismissAlert"
-          >
-            {{ alert.message }}
-          </v-alert>
           <div v-if="isSupported && !lisDeviceConnected">
             <v-btn
               @click="
                 requestDevice().then(async (_device) => {
-                  if (firstTry) {
-                    await server.value.device.gatt.connect();
-                  }
+                  // if (firstTry) {
+                  //   await server.value.device.gatt.connect();
+                  // }
                   isDeviceConnected = true;
-                  firstTry = false;
                   device.addEventListener(
                     'gattserverdisconnected',
                     onDisconnected
@@ -50,6 +42,7 @@
           >
             Send Timestamps
           </v-btn>
+          <v-btn @click="clearStorage()">Clear Storage</v-btn>
         </v-row>
         <v-row>
           <div v-if="device">
@@ -69,9 +62,9 @@
     </v-card>
   </v-container>
   <v-container>
-    <div v-if="showMsg && isConnected">
+    <div>
       <div
-        v-for="m in lmessages"
+        v-for="m in messages"
         :key="m.id"
         :class="[
           'd-flex flex-row align-center my-2',
@@ -84,7 +77,9 @@
             size="x-large"
             class="text-wrap"
             v-if="!m.isLocation"
-            >{{ m.text }}</v-chip
+            >
+            {{ decryptMessage(m, m.sharedKey) }}
+            </v-chip
           ></span
         >
         <span v-else class="blue--text ml-3"
@@ -93,7 +88,9 @@
             size="x-large"
             class="text-wrap"
             v-if="!m.isLocation"
-            >{{ decryptMessage(m, m.sharedKey) }}</v-chip
+            >
+            {{ decryptMessage(m, sharedKey) }}
+            </v-chip
           ></span
         >
       </div>
@@ -113,8 +110,8 @@
       clearable
       label="Message"
       type="text"
-      @click:append="sentMessage(tempMessage, false)"
-      @keydown.enter="sentMessage(tempMessage, false)"
+      @click:append="prepareMessage(tempMessage, false)"
+      @keydown.enter="prepareMessage(tempMessage, false)"
       maxlength="180"
       counter
     ></v-text-field>
@@ -125,7 +122,7 @@
       @messageSent="
         (msg) => {
           if (!sendingMessage) {
-            sentMessage(msg, true);
+            prepareMessage(msg, true);
           }
         }
       "
@@ -134,33 +131,13 @@
 </template>
   
   <script>
-  
-import { nextTick } from "vue";
 import { pausableWatch, useBluetooth } from "@vueuse/core";
 import MapVue from "./Map.vue";
-import { lmessages } from '../main.js';
+import messageStore from "@/utils/messages";
 
-// eslint-disable-next-line no-unused-vars
-var firstTry = true;
-
-var msgObj = {
-  id: 0,
-  text: null,
-  yours: false,
-  isLocation: false,
-};
-var isDeviceConnected = true;
-// eslint-disable-next-line no-unused-vars
+var isDeviceConnected = false;
 var lsharedKey = "";
 
-// eslint-disable-next-line no-unused-vars
-const getRecievedMessages = () => {
-  return lmessages;
-};
-
-const getConnectionStatus = () => {
-  return isDeviceConnected;
-};
 export default {
   name: "HelloWorld",
   components: { MapVue },
@@ -177,7 +154,7 @@ export default {
 
     var strBuild = "";
 
-    const getOtherMessage = async () => {
+    const getMessageFromBluetoothService = async () => {
       try {
         var service = await server.value.getPrimaryService(
           "00007070-0000-1000-8000-00805f9b34fb"
@@ -197,13 +174,15 @@ export default {
                   console.log(msg);
 
                   if (msg.startsWith("*|")) {
-                    var x = Object.assign({}, msgObj);
-                    x.id = makeid(20);
-                    x.text = strBuild + msg.substring(2);
-                    x.yours = false;
+                    var x = messageStore.getNewMessage(
+                      false,
+                      strBuild + msg.substring(2),
+                      false,
+                      lsharedKey
+                    );
 
                     if (!msg.includes("+")) {
-                      lmessages.push(x);
+                      messageStore.pushMessage(x);
                     }
                     if (document.hidden) {
                       createNotification();
@@ -216,7 +195,9 @@ export default {
               );
             });
           });
-      } catch (ex) {}
+      } catch (ex) {
+        console.log(ex);
+      }
     };
 
     function createNotification() {
@@ -230,43 +211,28 @@ export default {
       new Notification(title, options);
     }
 
-    function makeid(length) {
-      let result = "";
-      const characters =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-      const charactersLength = characters.length;
-      let counter = 0;
-      while (counter < length) {
-        result += characters.charAt(
-          Math.floor(Math.random() * charactersLength)
-        );
-        counter += 1;
-      }
-      return result;
-    }
-
     const { stop } = pausableWatch(isConnected, (newIsConnected) => {
       if (!newIsConnected || !server.value) return;
-      getOtherMessage();
+      getMessageFromBluetoothService();
       // We only want to run this on the initial connection, as we will use an event listener to handle updates:
       stop();
     });
 
     const sendMessage = async (msg) => {
-        var service = await server.value.getPrimaryService(
-          "00006969-0000-1000-8000-00805f9b34fb"
-        );
-        var stringCharacteristics = await service.getCharacteristic(
-          "00009876-0000-1000-8000-00805f9b34fb"
-        );
-        var enc = new TextEncoder(); // always utf-8
-        await stringCharacteristics.writeValueWithResponse(enc.encode(msg));
-     
+      var service = await server.value.getPrimaryService(
+        "00006969-0000-1000-8000-00805f9b34fb"
+      );
+      var stringCharacteristics = await service.getCharacteristic(
+        "00009876-0000-1000-8000-00805f9b34fb"
+      );
+      var enc = new TextEncoder(); // always utf-8
+      await stringCharacteristics.writeValueWithResponse(enc.encode(msg));
     };
 
     const timer = (ms) => new Promise((res) => setTimeout(res, ms));
 
-    const batchSendMessage = async (msg) => {
+    const batchSendMessage = async (message) => {
+      var msg = message.text;
       if (msg.length < 30) {
         sendMessage("*|" + msg);
       } else {
@@ -300,7 +266,7 @@ export default {
       server,
       sendMessage,
       batchSendMessage,
-      getOtherMessage,
+      getMessageFromBluetoothService,
       isDeviceConnected,
       onDisconnected,
     };
@@ -308,7 +274,6 @@ export default {
   data: () => ({
     sendingMessage: false,
     sharedKey: null,
-    messages: [],
     tempMessage: null,
     showMsg: false,
     notificationPermission: false,
@@ -321,52 +286,39 @@ export default {
     lisDeviceConnected: false,
     intervalTimestamp: 15000,
     testing: false,
-    alert: {
-      show: false,
-      message: "",
-      type: "info",
-      dismissible: false,
-    },
-    lmessagesValue: lmessages
   }),
-  created() {
-  },
+  created() {},
   mounted() {
     const storedObject = localStorage.getItem("messages");
     if (storedObject) {
-      this.lmessages = JSON.parse(storedObject);
+      messageStore.setMessages(JSON.parse(storedObject));
     }
 
     this.intervalID = setInterval(() => {
-      this.showMsg = false;
-      nextTick(() => {
-        this.lisDeviceConnected = getConnectionStatus();
-        this.showMsg = true;
-      });
-      this.$forceUpdate();
-    }, 5000);
+        this.saveMessagesToStorage();      
+    }, 20000);
   },
   methods: {
     startSendingTimestampMesssages() {
       var _this = this;
       this.testing = true;
-      // send one right away 
-      this.sentMessage(
-          "Timestamp Test Message " +
-            new Date().toLocaleString("en-US", {
-              month: "2-digit",
-              day: "2-digit",
-              year: "numeric",
-              hour: "numeric",
-              minute: "numeric",
-              second: "numeric",
-              hour12: true,
-            }),
-          false
-        );
+      // send one right away
+      this.prepareMessage(
+        "Timestamp Test Message " +
+          new Date().toLocaleString("en-US", {
+            month: "2-digit",
+            day: "2-digit",
+            year: "numeric",
+            hour: "numeric",
+            minute: "numeric",
+            second: "numeric",
+            hour12: true,
+          }),
+        false
+      );
 
       this.intervalID = setInterval(function () {
-        _this.sentMessage(
+        _this.prepareMessage(
           "Timestamp Test Message " +
             new Date().toLocaleString("en-US", {
               month: "2-digit",
@@ -384,17 +336,12 @@ export default {
     toggleMap() {
       this.showMap = !this.showMap;
     },
-    sentMessage(msg, isLatLong = false) {
+    prepareMessage(msg, isLatLong = false) {
       this.sendingMessage = true;
-      var x = Object.assign({}, msgObj);
-      x.id = this.makeidvue(20);
-      x.text = msg;
-      x.yours = true;
-      x.isLocation = isLatLong;
-      this.lmessages.push(x);
-
-      var hashed = this.hashMessage(msg);
-      this.batchSendMessage(hashed);
+      var x = messageStore.getNewMessage(true, this.hashMessage(msg), isLatLong, this.sharedKey);
+      messageStore.pushMessage(x);
+      this.saveMessagesToStorage();
+      this.batchSendMessage(x);
       this.tempMessage = null;
       this.sendingMessage = false;
     },
@@ -429,7 +376,7 @@ export default {
       try {
         const decryptedText = this.$CryptoJS.AES.decrypt(
           message.text,
-          savedSharedKey ? savedSharedKey : this.sharedKey.toLowerCase().trim()
+          savedSharedKey
         ).toString(this.$CryptoJS.enc.Utf8);
 
         if (this.detectLatLong(decryptedText)) {
@@ -438,25 +385,12 @@ export default {
 
         return decryptedText;
       } catch (ex) {
-        //lmessages = lmessages.filter((x) => x.Id !== message.Id);
+        //messages = messages.filter((x) => x.Id !== message.Id);
         console.log("message not decrypted");
         return null;
       }
     },
-    makeidvue(length) {
-      let result = "";
-      const characters =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-      const charactersLength = characters.length;
-      let counter = 0;
-      while (counter < length) {
-        result += characters.charAt(
-          Math.floor(Math.random() * charactersLength)
-        );
-        counter += 1;
-      }
-      return result;
-    },
+ 
     detectLatLong(message) {
       const regex =
         /^[-+]?([1-8]?\d(\.\d+)?|90(\.0+)?),[-+]?(180(\.0+)?|((1[0-7]\d)|([1-9]?\d))(\.\d+)?)$/;
@@ -474,29 +408,34 @@ export default {
       return match;
     },
     saveMessagesToStorage() {
-      var savedM = this.messages;
+      var savedM = messageStore.getMessages();
       savedM.forEach((x) => {
-        x.sharedKey = this.sharedKey;
+        if (x.sharedKey == null) {
+          x.sharedKey = this.sharedKey;
+        }
       });
       //writing shared key to local storage
-      localStorage.setItem("messages", JSON.stringify(savedM));
-      console.log("saved messages to local storage");
+      if (savedM.length > 0) {
+        localStorage.setItem("messages", JSON.stringify(savedM));
+        console.log("saved messages to local storage");
+      }
     },
-  },
-  computed: {
-    lmessages() {
-      return this.lmessagesValue;
-    }
+    clearStorage() {
+      localStorage.removeItem("messages");
+      this.messages = [];
+      window.location.reload();
+    },
   },
   watch: {
     sharedKey() {
       lsharedKey = this.sharedKey.toLowerCase().trim();
     },
-    lmessagesValue(newValue, oldValue) {
-      console.log(`lmessages changed from ${oldValue} to ${newValue}`);
-    },
-    
   },
+  computed: {
+    messages() {
+      return messageStore.getMessages();
+    }
+  }
 };
 </script>
   
