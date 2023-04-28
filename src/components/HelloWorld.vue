@@ -77,10 +77,9 @@
             size="x-large"
             class="text-wrap"
             v-if="!m.isLocation"
-            >
+          >
             {{ decryptMessage(m, m.sharedKey) }}
-            </v-chip
-          ></span
+          </v-chip></span
         >
         <span v-else class="blue--text ml-3"
           ><v-chip
@@ -88,10 +87,9 @@
             size="x-large"
             class="text-wrap"
             v-if="!m.isLocation"
-            >
+          >
             {{ decryptMessage(m, sharedKey) }}
-            </v-chip
-          ></span
+          </v-chip></span
         >
       </div>
     </div>
@@ -132,7 +130,6 @@
 </template>
   
   <script>
-import { OtherLatLong } from '@/utils/globals.js';
 import { pausableWatch, useBluetooth } from "@vueuse/core";
 import MapVue from "./Map.vue";
 import messageStore from "@/utils/messages";
@@ -180,7 +177,8 @@ export default {
                       false,
                       strBuild + msg.substring(2),
                       false,
-                      lsharedKey
+                      lsharedKey,
+                      false
                     );
 
                     if (!msg.includes("+")) {
@@ -281,7 +279,7 @@ export default {
     notificationPermission: false,
     lastMessageRecieved: "",
     showMap: false,
-    parentData: {lat: null, long: null},
+    parentData: { lat: null, long: null },
     lisDeviceConnected: false,
     intervalTimestamp: 15000,
     testing: false,
@@ -294,7 +292,7 @@ export default {
     }
 
     this.intervalID = setInterval(() => {
-        this.saveMessagesToStorage();      
+      this.saveMessagesToStorage();
     }, 20000);
   },
   methods: {
@@ -337,7 +335,13 @@ export default {
     },
     prepareMessage(msg, isLatLong = false) {
       this.sendingMessage = true;
-      var x = messageStore.getNewMessage(true, this.hashMessage(msg), isLatLong, this.sharedKey);
+      var x = messageStore.getNewMessage(
+        true,
+        this.hashMessage(msg),
+        isLatLong,
+        this.sharedKey,
+        false
+      );
       messageStore.pushMessage(x);
       this.saveMessagesToStorage();
       this.batchSendMessage(x);
@@ -378,8 +382,11 @@ export default {
           savedSharedKey
         ).toString(this.$CryptoJS.enc.Utf8);
 
-        if (this.detectLatLong(decryptedText)) {
-          message.isLocation = true;
+        if (!message.isProccessed) {
+          message.isProccessed = true;
+          if (this.detectLatLong(decryptedText)) {
+            message.isLocation = true;
+          }
         }
 
         return decryptedText;
@@ -389,33 +396,29 @@ export default {
         return null;
       }
     },
- 
+
     detectLatLong(message) {
       const regex =
         /^[-+]?([1-8]?\d(\.\d+)?|90(\.0+)?),[-+]?(180(\.0+)?|((1[0-7]\d)|([1-9]?\d))(\.\d+)?)$/;
       const match = message.match(regex);
 
       if (match) {
- 
         const lat = parseFloat(match[1]);
-        let long = (match[4]);
-        
-        if(match[0].includes(",-")){
+        let long = match[4];
+
+        if (match[0].includes(",-")) {
           long = "-" + long;
-        } 
-        
-          this.parentData.lat = null;
-          this.parentData.long = null
-          var temp = {lat: lat, long: long};
-          this.parentData = temp;
-          console.log(`Latitude: ${lat}, Longitude: ${long}`);
+        }
+
+        this.parentData.lat = null;
+        this.parentData.long = null;
+        var temp = { lat: lat, long: long };
+        this.parentData = temp;
+        console.log(`Latitude: ${lat}, Longitude: ${long}`);
       } else {
         //console.log("No latitude and longitude found in string.");
       }
       return match;
-    },
-    onLocationUpdated(newLocation) {
-      console.log('Location updated in Map component:', newLocation);
     },
     saveMessagesToStorage() {
       var savedM = messageStore.getMessages();
@@ -435,7 +438,6 @@ export default {
       this.messages = [];
       window.location.reload();
     },
-
   },
   watch: {
     sharedKey() {
@@ -445,8 +447,8 @@ export default {
   computed: {
     messages() {
       return messageStore.getMessages();
-    }
-  }
+    },
+  },
 };
 </script>
   

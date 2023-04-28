@@ -7,7 +7,6 @@
 </template>
 
 <script>
-import { OtherLatLong } from '@/utils/globals.js';
 import esriConfig from "@arcgis/core/config";
 import Map from "@arcgis/core/Map";
 import MapView from "@arcgis/core/views/MapView";
@@ -53,7 +52,6 @@ export default {
   mounted() {
     
     // eslint-disable-next-line no-unused-vars
-    const { lat, long } = OtherLatLong;
     var _this = this;
     this.getPhoneLocation();
     this.intervalID = setInterval(function () {

@@ -8,6 +8,7 @@ let message = ref({
     text: null,
     yours: false,
     isLocation: false,
+    isProccessed: false,
 });
 
 
@@ -22,12 +23,14 @@ let message = ref({
   return messages.value;
 }
 
- function getNewMessage(yours, text,isLocation){
+ function getNewMessage(yours, text,isLocation,sharedKey,isProccessed){
     var x = Object.assign({}, message);
     x.id = makeid(20);
     x.yours = yours;
     x.text = text;
+    x.sharedKey;
     x.isLocation= isLocation;
+    x.isProccessed = isProccessed;
     return x;
 }
 
