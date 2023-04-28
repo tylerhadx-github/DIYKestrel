@@ -116,9 +116,10 @@
       counter
     ></v-text-field>
     <br />
+    <!-- :OtherLatLong="OtherLatLong" -->
     <MapVue
       v-if="showMap"
-      :otherLatLong="otherLatLong"
+      :dataProp="parentData"
       @messageSent="
         (msg) => {
           if (!sendingMessage) {
@@ -131,6 +132,7 @@
 </template>
   
   <script>
+import { OtherLatLong } from '@/utils/globals.js';
 import { pausableWatch, useBluetooth } from "@vueuse/core";
 import MapVue from "./Map.vue";
 import messageStore from "@/utils/messages";
@@ -279,10 +281,7 @@ export default {
     notificationPermission: false,
     lastMessageRecieved: "",
     showMap: false,
-    otherLatLong: {
-      Lat: null,
-      Long: null,
-    },
+    parentData: {lat: null, long: null},
     lisDeviceConnected: false,
     intervalTimestamp: 15000,
     testing: false,
@@ -386,7 +385,7 @@ export default {
         return decryptedText;
       } catch (ex) {
         //messages = messages.filter((x) => x.Id !== message.Id);
-        console.log("message not decrypted");
+        console.log("message not decrypted: " + ex);
         return null;
       }
     },
@@ -397,15 +396,26 @@ export default {
       const match = message.match(regex);
 
       if (match) {
+ 
         const lat = parseFloat(match[1]);
-        const long = parseFloat(match[4]);
-        this.otherLatLong.Lat = lat;
-        this.otherLatLong.long = long;
-        console.log(`Latitude: ${lat}, Longitude: ${long}`);
+        let long = (match[4]);
+        
+        if(match[0].includes(",-")){
+          long = "-" + long;
+        } 
+        
+          this.parentData.lat = null;
+          this.parentData.long = null
+          var temp = {lat: lat, long: long};
+          this.parentData = temp;
+          console.log(`Latitude: ${lat}, Longitude: ${long}`);
       } else {
         //console.log("No latitude and longitude found in string.");
       }
       return match;
+    },
+    onLocationUpdated(newLocation) {
+      console.log('Location updated in Map component:', newLocation);
     },
     saveMessagesToStorage() {
       var savedM = messageStore.getMessages();
@@ -425,6 +435,7 @@ export default {
       this.messages = [];
       window.location.reload();
     },
+
   },
   watch: {
     sharedKey() {
