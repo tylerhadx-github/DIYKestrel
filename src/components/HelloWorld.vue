@@ -4,8 +4,30 @@
       <v-card-title> LoRa Chat Application</v-card-title>
       <v-card-text>
         <v-row>
-          <div v-if="isSupported  && !lisDeviceConnected">
-            <v-btn @click="requestDevice().then(async _device => { if(!isDeviceConnected && !firstTry){await server.value.device.gatt.connect() } isDeviceConnected = true; firstTry = false; device.addEventListener('gattserverdisconnected',onDisconnected)})">
+          <v-alert
+            v-if="alert.show"
+            :type="alert.type"
+            :dismissible="alert.dismissible"
+            @click:dismiss="dismissAlert"
+          >
+            {{ alert.message }}
+          </v-alert>
+          <div v-if="isSupported && !lisDeviceConnected">
+            <v-btn
+              @click="
+                requestDevice().then(async (_device) => {
+                  if (firstTry) {
+                    await server.value.device.gatt.connect();
+                  }
+                  isDeviceConnected = true;
+                  firstTry = false;
+                  device.addEventListener(
+                    'gattserverdisconnected',
+                    onDisconnected
+                  );
+                })
+              "
+            >
               Request Bluetooth Device
             </v-btn>
           </div>
@@ -17,9 +39,16 @@
           >
             Request Background Notifications
           </v-btn>
-          <v-btn @click="toggleMap()"       :disabled="!device"
->
+          <v-btn @click="toggleMap()" :disabled="!device">
             <span v-if="showMap">Hide </span><span v-else>Show </span>&nbsp;Map
+          </v-btn>
+
+          <v-btn
+            @click="startSendingTimestampMesssages()"
+            :disabled="!device"
+            v-if="!testing"
+          >
+            Send Timestamps
           </v-btn>
         </v-row>
         <v-row>
@@ -50,14 +79,22 @@
         ]"
       >
         <span v-if="m.yours" class="blue--text mr-3"
-          ><v-chip color="green" size="x-large" class="text-wrap" v-if="!m.isLocation">{{
-            m.text
-          }}</v-chip></span
+          ><v-chip
+            color="green"
+            size="x-large"
+            class="text-wrap"
+            v-if="!m.isLocation"
+            >{{ m.text }}</v-chip
+          ></span
         >
         <span v-else class="blue--text ml-3"
-          ><v-chip color="blue" size="x-large" class="text-wrap" v-if="!m.isLocation">{{
-            decryptMessage(m)
-          }}</v-chip></span
+          ><v-chip
+            color="blue"
+            size="x-large"
+            class="text-wrap"
+            v-if="!m.isLocation"
+            >{{ decryptMessage(m, m.sharedKey) }}</v-chip
+          ></span
         >
       </div>
     </div>
@@ -67,7 +104,7 @@
       v-model="tempMessage"
       append-icon="mdi-send"
       :rules="[
-        (v) =>  !v.includes(',') || 'COMMAs are BAD',
+        (v) => !v.includes(',') || 'COMMAs are BAD',
         (v) => !v.includes('+') || 'PLUS + are BAD',
       ]"
       :disabled="!device"
@@ -76,43 +113,57 @@
       clearable
       label="Message"
       type="text"
-      @click:append="sentMessage(tempMessage,false)"
-      @keydown.enter="sentMessage(tempMessage,false)"
+      @click:append="sentMessage(tempMessage, false)"
+      @keydown.enter="sentMessage(tempMessage, false)"
       maxlength="180"
       counter
     ></v-text-field>
     <br />
-    <MapVue v-if="showMap"  :otherLatLong="otherLatLong"  @messageSent="(msg) => {if(!sendingMessage){sentMessage(msg,true)}}"></MapVue>
+    <MapVue
+      v-if="showMap"
+      :otherLatLong="otherLatLong"
+      @messageSent="
+        (msg) => {
+          if (!sendingMessage) {
+            sentMessage(msg, true);
+          }
+        }
+      "
+    ></MapVue>
   </v-container>
 </template>
   
   <script>
+  
 import { nextTick } from "vue";
 import { pausableWatch, useBluetooth } from "@vueuse/core";
 import MapVue from "./Map.vue";
+import { lmessages } from '../main.js';
 
+// eslint-disable-next-line no-unused-vars
 var firstTry = true;
-var lmessages = [];
+
 var msgObj = {
   id: 0,
   text: null,
   yours: false,
-  isLocation: false
+  isLocation: false,
 };
 var isDeviceConnected = true;
 // eslint-disable-next-line no-unused-vars
 var lsharedKey = "";
+
+// eslint-disable-next-line no-unused-vars
 const getRecievedMessages = () => {
   return lmessages;
 };
 
-
-const getConnectionStatus = () =>{
+const getConnectionStatus = () => {
   return isDeviceConnected;
-}
+};
 export default {
   name: "HelloWorld",
-  components: {  MapVue },
+  components: { MapVue },
   setup() {
     const { isConnected, isSupported, device, requestDevice, server } =
       useBluetooth({
@@ -127,47 +178,48 @@ export default {
     var strBuild = "";
 
     const getOtherMessage = async () => {
-      var service = await server.value.getPrimaryService(
-        "00007070-0000-1000-8000-00805f9b34fb"
-      );
-      // eslint-disable-next-line no-unused-vars
-      var stringCharacteristics = await service
-        .getCharacteristic("00006789-0000-1000-8000-00805f9b34fb")
-        .then((characteristic) => {
-          return characteristic.startNotifications().then(() => {
-            console.log("> Notifications started");
-            characteristic.addEventListener(
-              "characteristicvaluechanged",
-              (event) => {
-                let value = event.target.value;
-                var enc = new TextDecoder("utf-8");
-                var msg = enc.decode(value);
-                console.log(msg);
+      try {
+        var service = await server.value.getPrimaryService(
+          "00007070-0000-1000-8000-00805f9b34fb"
+        );
+        // eslint-disable-next-line no-unused-vars
+        var stringCharacteristics = await service
+          .getCharacteristic("00006789-0000-1000-8000-00805f9b34fb")
+          .then((characteristic) => {
+            return characteristic.startNotifications().then(() => {
+              console.log("> Notifications started");
+              characteristic.addEventListener(
+                "characteristicvaluechanged",
+                (event) => {
+                  let value = event.target.value;
+                  var enc = new TextDecoder("utf-8");
+                  var msg = enc.decode(value);
+                  console.log(msg);
 
-                if (msg.startsWith("*|")) {
-                  var x = Object.assign({}, msgObj);
-                  x.id = makeid(20);
-                  x.text = strBuild + msg.substring(2);
-                  x.yours = false;
+                  if (msg.startsWith("*|")) {
+                    var x = Object.assign({}, msgObj);
+                    x.id = makeid(20);
+                    x.text = strBuild + msg.substring(2);
+                    x.yours = false;
 
-                  if (!msg.includes("+")) {
-                    lmessages.push(x);
+                    if (!msg.includes("+")) {
+                      lmessages.push(x);
+                    }
+                    if (document.hidden) {
+                      createNotification();
+                    }
+                    strBuild = "";
+                  } else {
+                    strBuild = strBuild + msg.substring(2);
                   }
-                  if (document.hidden) {
-                    createNotification();
-                  }
-                  strBuild = "";
-                } else {
-                  strBuild = strBuild + msg.substring(2);
                 }
-              }
-            );
+              );
+            });
           });
-        });
+      } catch (ex) {}
     };
 
     function createNotification() {
-      
       const title = "Lora Recieved New Message";
       const img = "/img/lora.png";
       const options = {
@@ -177,7 +229,6 @@ export default {
 
       new Notification(title, options);
     }
-
 
     function makeid(length) {
       let result = "";
@@ -202,19 +253,15 @@ export default {
     });
 
     const sendMessage = async (msg) => {
-      if(isDeviceConnected){
-      var service = await server.value.getPrimaryService(
-        "00006969-0000-1000-8000-00805f9b34fb"
-      );
-      var stringCharacteristics = await service.getCharacteristic(
-        "00009876-0000-1000-8000-00805f9b34fb"
-      );
-      var enc = new TextEncoder(); // always utf-8
-      await stringCharacteristics.writeValueWithResponse(enc.encode(msg));
-    }
-    else{
-      console.log("device disconnected")
-    }
+        var service = await server.value.getPrimaryService(
+          "00006969-0000-1000-8000-00805f9b34fb"
+        );
+        var stringCharacteristics = await service.getCharacteristic(
+          "00009876-0000-1000-8000-00805f9b34fb"
+        );
+        var enc = new TextEncoder(); // always utf-8
+        await stringCharacteristics.writeValueWithResponse(enc.encode(msg));
+     
     };
 
     const timer = (ms) => new Promise((res) => setTimeout(res, ms));
@@ -242,9 +289,8 @@ export default {
       }
     }
 
-    function onDisconnected(){
+    function onDisconnected() {
       isDeviceConnected = false;
-      
     }
     return {
       isConnected,
@@ -256,7 +302,7 @@ export default {
       batchSendMessage,
       getOtherMessage,
       isDeviceConnected,
-      onDisconnected
+      onDisconnected,
     };
   },
   data: () => ({
@@ -273,26 +319,72 @@ export default {
       Long: null,
     },
     lisDeviceConnected: false,
+    intervalTimestamp: 15000,
+    testing: false,
+    alert: {
+      show: false,
+      message: "",
+      type: "info",
+      dismissible: false,
+    },
+    lmessagesValue: lmessages
   }),
   created() {
-    this.lmessages = getRecievedMessages();
   },
   mounted() {
+    const storedObject = localStorage.getItem("messages");
+    if (storedObject) {
+      this.lmessages = JSON.parse(storedObject);
+    }
+
     this.intervalID = setInterval(() => {
       this.showMsg = false;
       nextTick(() => {
         this.lisDeviceConnected = getConnectionStatus();
-        this.lmessages = getRecievedMessages();
         this.showMsg = true;
       });
       this.$forceUpdate();
     }, 5000);
   },
   methods: {
+    startSendingTimestampMesssages() {
+      var _this = this;
+      this.testing = true;
+      // send one right away 
+      this.sentMessage(
+          "Timestamp Test Message " +
+            new Date().toLocaleString("en-US", {
+              month: "2-digit",
+              day: "2-digit",
+              year: "numeric",
+              hour: "numeric",
+              minute: "numeric",
+              second: "numeric",
+              hour12: true,
+            }),
+          false
+        );
+
+      this.intervalID = setInterval(function () {
+        _this.sentMessage(
+          "Timestamp Test Message " +
+            new Date().toLocaleString("en-US", {
+              month: "2-digit",
+              day: "2-digit",
+              year: "numeric",
+              hour: "numeric",
+              minute: "numeric",
+              second: "numeric",
+              hour12: true,
+            }),
+          false
+        );
+      }, this.intervalTimestamp);
+    },
     toggleMap() {
       this.showMap = !this.showMap;
     },
-    sentMessage(msg, isLatLong =false) {
+    sentMessage(msg, isLatLong = false) {
       this.sendingMessage = true;
       var x = Object.assign({}, msgObj);
       x.id = this.makeidvue(20);
@@ -304,7 +396,7 @@ export default {
       var hashed = this.hashMessage(msg);
       this.batchSendMessage(hashed);
       this.tempMessage = null;
-      this.sendingMessage =false;
+      this.sendingMessage = false;
     },
     requestBackgroundSync() {
       Notification.requestPermission((permission) => {
@@ -333,20 +425,20 @@ export default {
       ).toString();
       return encryptedText;
     },
-    decryptMessage(message) {
+    decryptMessage(message, savedSharedKey) {
       try {
         const decryptedText = this.$CryptoJS.AES.decrypt(
           message.text,
-          this.sharedKey.toLowerCase().trim()
+          savedSharedKey ? savedSharedKey : this.sharedKey.toLowerCase().trim()
         ).toString(this.$CryptoJS.enc.Utf8);
 
-        if(this.detectLatLong(decryptedText)){
+        if (this.detectLatLong(decryptedText)) {
           message.isLocation = true;
         }
-        
+
         return decryptedText;
       } catch (ex) {
-        lmessages = lmessages.filter((x) => x.Id !== message.Id);
+        //lmessages = lmessages.filter((x) => x.Id !== message.Id);
         console.log("message not decrypted");
         return null;
       }
@@ -377,16 +469,33 @@ export default {
         this.otherLatLong.long = long;
         console.log(`Latitude: ${lat}, Longitude: ${long}`);
       } else {
-        console.log("No latitude and longitude found in string.");
+        //console.log("No latitude and longitude found in string.");
       }
       return match;
+    },
+    saveMessagesToStorage() {
+      var savedM = this.messages;
+      savedM.forEach((x) => {
+        x.sharedKey = this.sharedKey;
+      });
+      //writing shared key to local storage
+      localStorage.setItem("messages", JSON.stringify(savedM));
+      console.log("saved messages to local storage");
+    },
+  },
+  computed: {
+    lmessages() {
+      return this.lmessagesValue;
     }
   },
   watch: {
     sharedKey() {
-      lmessages = [];
       lsharedKey = this.sharedKey.toLowerCase().trim();
     },
+    lmessagesValue(newValue, oldValue) {
+      console.log(`lmessages changed from ${oldValue} to ${newValue}`);
+    },
+    
   },
 };
 </script>
