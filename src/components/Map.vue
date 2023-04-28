@@ -17,9 +17,9 @@ import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol";
 import Locate from "@arcgis/core/widgets/Locate";
 import Graphic from "@arcgis/core/Graphic";
 import Polyline from "@arcgis/core/geometry/Polyline";
+import BasemapGallery from "@arcgis/core/widgets/BasemapGallery";
+import Expand from '@arcgis/core/widgets/Expand';
 
-// import BasemapGallery from "@arcgis/core/widgets/BasemapGallery";
-// import Search from "@arcgis/core/widgets/Search";
 
 export default {
   name: "MapVue",
@@ -44,14 +44,8 @@ export default {
       text: null,
       yours: true,
     },
-    // otherLatLong: {
-    //   Lat: null,
-    //   Long: null,
-    // },
   }),
   mounted() {
-    
-    // eslint-disable-next-line no-unused-vars
     var _this = this;
     this.getPhoneLocation();
     this.intervalID = setInterval(function () {
@@ -89,23 +83,23 @@ export default {
 
       //this.view.graphics.add(this.pathGraphic);
 
-      //   var basemapGallery = new BasemapGallery({
-      //     view: this.view,
-      //     container: document.createElement("div"),
-      //   });
-      //   var bgExpand = new Expand({
-      //     view: this.view,
-      //     content: basemapGallery,
-      //   });
-      //   basemapGallery.watch("activeBasemap", function () {
-      //     var mobileSize =
-      //       this.view.heightBreakpoint === "xsmall" ||
-      //       this.view.widthBreakpoint === "xsmall";
-      //     if (mobileSize) {
-      //       bgExpand.collapse();
-      //     }
-      //   });
-      //   this.view.ui.add(bgExpand, "top-right");
+        var basemapGallery = new BasemapGallery({
+          view: view,
+          container: document.createElement("div"),
+        });
+        var bgExpand = new Expand({
+          view: view,
+          content: basemapGallery,
+        });
+        basemapGallery.watch("activeBasemap", function () {
+          var mobileSize =
+            view.heightBreakpoint === "xsmall" ||
+            view.widthBreakpoint === "xsmall";
+          if (mobileSize) {
+            bgExpand.collapse();
+          }
+        });
+         view.ui.add(bgExpand, "top-right");
     },
     getPhoneLocation() {
       var _this = this;
@@ -132,6 +126,8 @@ export default {
       this.path.paths[0].push([long, lat]);
       this.pathGraphic.geometry = this.path;
       //this.view.graphics.add(this.pathGraphic);
+      this.graphicsLayer.add(this.pathGraphic);
+
     },
 
   },
