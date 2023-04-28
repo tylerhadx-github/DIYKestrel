@@ -102,7 +102,7 @@
         (v) => !v.includes(',') || 'COMMAs are BAD',
         (v) => !v.includes('+') || 'PLUS + are BAD',
       ]"
-      :disabled="!device"
+      :disabled="!device && stillSending"
       variant="filled"
       clear-icon="mdi-close-circle"
       clearable
@@ -120,9 +120,7 @@
       :dataProp="parentData"
       @messageSent="
         (msg) => {
-          if (!sendingMessage) {
-            prepareMessage(msg, true);
-          }
+          prepareMessage(msg, true);
         }
       "
     ></MapVue>
@@ -136,6 +134,11 @@ import messageStore from "@/utils/messages";
 
 var isDeviceConnected = false;
 var lsharedKey = "";
+let isSending = false;
+
+function isMessageSending(){
+  return isSending;
+}
 
 export default {
   name: "HelloWorld",
@@ -152,6 +155,7 @@ export default {
       });
 
     var strBuild = "";
+    let messageQueue = [];
 
     const getMessageFromBluetoothService = async () => {
       try {
@@ -226,23 +230,43 @@ export default {
         "00009876-0000-1000-8000-00805f9b34fb"
       );
       var enc = new TextEncoder(); // always utf-8
-      await stringCharacteristics.writeValueWithResponse(enc.encode(msg));
+      var res  =await stringCharacteristics.writeValueWithResponse(enc.encode(msg));
+      console.log(res);
     };
 
     const timer = (ms) => new Promise((res) => setTimeout(res, ms));
 
-    const batchSendMessage = async (message) => {
-      var msg = message.text;
-      if (msg.length < 30) {
-        sendMessage("*|" + msg);
-      } else {
-        if (msg.length < 301) {
-          //try to break them into ten messages 30 chars with 0| 1| and count down
-          var batch = msg.match(/.{1,30}/g);
-          console.log(batch);
-          loopMessage(batch);
+    const batchSendMessage = async () => {
+      isSending = true;
+      while (messageQueue.length > 0) {
+        const message = messageQueue[0];
+        try {
+          var msg = message.text;
+          if (msg.length < 30) {
+            await sendMessage("*|" + msg);
+            messageQueue.shift();
+          } else {
+            if (msg.length < 301) {
+              //try to break them into ten messages 30 chars with 0| 1| and count down
+              var batch = msg.match(/.{1,30}/g);
+              console.log(batch);
+              await loopMessage(batch);
+              messageQueue.shift();
+            }
+          }
+        } catch (error) {
+          console.error(error);
+          if (message.retries > 0) {
+            // Decrement retries and add message to end of queue
+            message.retries--;
+            messageQueue.push(message);
+          } else {
+            // Remove message from queue if retries are exhausted
+            messageQueue.shift();
+          }
         }
       }
+      isSending = false;
     };
     async function loopMessage(batch) {
       for (var i = 0; i < batch.length; i++) {
@@ -250,11 +274,10 @@ export default {
         if (i == batch.length - 1) {
           prefix = "*";
         }
-        sendMessage(prefix + "|" + batch[i]);
+        await sendMessage(prefix + "|" + batch[i]);
         await timer(2000);
       }
     }
-
     function onDisconnected() {
       isDeviceConnected = false;
     }
@@ -269,10 +292,10 @@ export default {
       getMessageFromBluetoothService,
       isDeviceConnected,
       onDisconnected,
+      messageQueue,
     };
   },
   data: () => ({
-    sendingMessage: false,
     sharedKey: null,
     tempMessage: null,
     showMsg: false,
@@ -334,7 +357,6 @@ export default {
       this.showMap = !this.showMap;
     },
     prepareMessage(msg, isLatLong = false) {
-      this.sendingMessage = true;
       var x = messageStore.getNewMessage(
         true,
         this.hashMessage(msg),
@@ -344,9 +366,16 @@ export default {
       );
       messageStore.pushMessage(x);
       this.saveMessagesToStorage();
-      this.batchSendMessage(x);
+
+      this.addToQueue(x);
+
       this.tempMessage = null;
-      this.sendingMessage = false;
+    },
+    addToQueue(x) {
+      this.messageQueue.push(x);
+      //if (!this.isSending  && !isMessageSending()) {
+        this.batchSendMessage(x);
+      //}
     },
     requestBackgroundSync() {
       Notification.requestPermission((permission) => {
@@ -448,6 +477,9 @@ export default {
     messages() {
       return messageStore.getMessages();
     },
+    stillSending(){
+      return isMessageSending();
+    }
   },
 };
 </script>

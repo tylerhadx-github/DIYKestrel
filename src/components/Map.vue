@@ -80,8 +80,8 @@ export default {
 
         view.ui.add(locateWidget, "top-left");
       
-
-      //this.view.graphics.add(this.pathGraphic);
+//      this.pathGraphic.geometry = this.path;
+  //    view.ui.graphics.add(this.pathGraphic);
 
         var basemapGallery = new BasemapGallery({
           view: view,
@@ -116,18 +116,12 @@ export default {
     pushLocationMessage(coords) {
       var msg = "sending location: " + coords.latitude + "," + coords.longitude;
       console.log(msg);
-
-      //   var hsm = this.hashMessage(msg);
-      //   var dsm = this.decryptMessage(hsm);
-      //   console.log("unhash: " + dsm);
       this.$emit("messageSent", coords.latitude + "," + coords.longitude);
     },
     pushOtherLatLongToPath(lat, long) {
       this.path.paths[0].push([long, lat]);
       this.pathGraphic.geometry = this.path;
-      //this.view.graphics.add(this.pathGraphic);
       this.graphicsLayer.add(this.pathGraphic);
-
     },
 
   },
@@ -154,7 +148,6 @@ export default {
           },
         });
 
-        // Create a graphic and add it to the graphics layer
         const graphic = {
           geometry: point,
           symbol: symbol,

@@ -9,6 +9,7 @@ let message = ref({
     yours: false,
     isLocation: false,
     isProccessed: false,
+    retry: 3
 });
 
 
