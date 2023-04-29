@@ -79,7 +79,9 @@
             v-if="!m.isLocation"
           >
             {{ decryptMessage(m, m.sharedKey) }}
-          </v-chip></span
+          </v-chip>
+          <div v-if="m.recieved">Recieved</div>
+          </span
         >
         <span v-else class="blue--text ml-3"
           ><v-chip
@@ -95,13 +97,14 @@
     </div>
   </v-container>
   <v-container>
+    <!-- :rules="[
+        (v) => !v.includes(',') || 'COMMAs are BAD',
+        (v) => !v.includes('+') || 'PLUS + are BAD',
+      ]" -->
     <v-text-field
       v-model="tempMessage"
       append-icon="mdi-send"
-      :rules="[
-        (v) => !v.includes(',') || 'COMMAs are BAD',
-        (v) => !v.includes('+') || 'PLUS + are BAD',
-      ]"
+      
       :disabled="!device && stillSending"
       variant="filled"
       clear-icon="mdi-close-circle"
@@ -135,10 +138,14 @@ import messageStore from "@/utils/messages";
 var isDeviceConnected = false;
 var lsharedKey = "";
 let isSending = false;
-
-function isMessageSending(){
+let recievingMessage = false;
+let haveStart = false;
+let tempID = null;
+function isMessageSending() {
   return isSending;
 }
+
+//a function that watch's recievingMessage when it is true, and sets it to false after ten seconds
 
 export default {
   name: "HelloWorld",
@@ -170,13 +177,30 @@ export default {
               console.log("> Notifications started");
               characteristic.addEventListener(
                 "characteristicvaluechanged",
-                (event) => {
+                async (event) => {
+                  recievingMessage = true;
+                 
                   let value = event.target.value;
                   var enc = new TextDecoder("utf-8");
                   var msg = enc.decode(value);
                   console.log(msg);
 
-                  if (msg.startsWith("*|")) {
+                  if(msg.startsWith("A|")){
+                    //ack msg recieved
+                    messageStore.getMessages().filter(x=>x.id ==msg.substring(2))[0].recieved = true;
+                    recievingMessage = false;
+                  }
+
+                 else if(msg.startsWith("ID|")){
+                    tempID =  msg.substring(3);
+                  }
+
+                  else if(msg.startsWith("0|")){
+                    haveStart == true;
+                    strBuild = strBuild + msg.substring(2);
+                  }
+
+                  else if (msg.startsWith("*|")) {
                     var x = messageStore.getNewMessage(
                       false,
                       strBuild + msg.substring(2),
@@ -184,15 +208,22 @@ export default {
                       lsharedKey,
                       false
                     );
-
+                    if(tempID !=null){
+                      x.id = tempID;
+                    }
                     if (!msg.includes("+")) {
                       messageStore.pushMessage(x);
+                      //send ack
+                      await sendMessage("A|" + x.id);
+                      recievingMessage = false;
+                      tempID = null;
                     }
                     if (document.hidden) {
                       createNotification();
                     }
                     strBuild = "";
-                  } else {
+                  } 
+                  else {
                     strBuild = strBuild + msg.substring(2);
                   }
                 }
@@ -230,8 +261,7 @@ export default {
         "00009876-0000-1000-8000-00805f9b34fb"
       );
       var enc = new TextEncoder(); // always utf-8
-      var res  =await stringCharacteristics.writeValueWithResponse(enc.encode(msg));
-      console.log(res);
+      await stringCharacteristics.writeValueWithResponse(enc.encode(msg));
     };
 
     const timer = (ms) => new Promise((res) => setTimeout(res, ms));
@@ -240,30 +270,39 @@ export default {
       isSending = true;
       while (messageQueue.length > 0) {
         const message = messageQueue[0];
-        try {
-          var msg = message.text;
-          if (msg.length < 30) {
-            await sendMessage("*|" + msg);
-            messageQueue.shift();
-          } else {
-            if (msg.length < 301) {
-              //try to break them into ten messages 30 chars with 0| 1| and count down
-              var batch = msg.match(/.{1,30}/g);
-              console.log(batch);
-              await loopMessage(batch);
+        //try to not talk over each other
+        if (!recievingMessage) {
+          try {
+            await sendMessage("ID|" + message.id);
+            await timer(2200);
+
+            var msg = message.text;
+            if (msg.length < 30) {
+              await sendMessage("*|" + msg);
+              messageQueue.shift();
+            } else {
+              if (msg.length < 301) {
+                //try to break them into ten messages 30 chars with 0| 1| and count down
+                var batch = msg.match(/.{1,30}/g);
+                console.log(batch);
+                await loopMessage(batch);
+                messageQueue.shift();
+              }
+            }
+          } catch (error) {
+            console.error(error);
+            if (message.retries > 0) {
+              // Decrement retries and add message to end of queue
+              message.retries--;
+              messageQueue.push(message);
+            } else {
+              // Remove message from queue if retries are exhausted
               messageQueue.shift();
             }
           }
-        } catch (error) {
-          console.error(error);
-          if (message.retries > 0) {
-            // Decrement retries and add message to end of queue
-            message.retries--;
-            messageQueue.push(message);
-          } else {
-            // Remove message from queue if retries are exhausted
-            messageQueue.shift();
-          }
+        } else {
+          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 5 seconds
+          recievingMessage = false;
         }
       }
       isSending = false;
@@ -368,14 +407,15 @@ export default {
       this.saveMessagesToStorage();
 
       this.addToQueue(x);
-
-      this.tempMessage = null;
+      if (!isLatLong && !this.testing) {
+        //location updates wont remove your message
+        //and so timestamp message gen doesnt remove your message
+        this.tempMessage = null;
+      }
     },
     addToQueue(x) {
       this.messageQueue.push(x);
-      //if (!this.isSending  && !isMessageSending()) {
-        this.batchSendMessage(x);
-      //}
+      this.batchSendMessage(x);
     },
     requestBackgroundSync() {
       Notification.requestPermission((permission) => {
@@ -477,9 +517,9 @@ export default {
     messages() {
       return messageStore.getMessages();
     },
-    stillSending(){
+    stillSending() {
       return isMessageSending();
-    }
+    },
   },
 };
 </script>

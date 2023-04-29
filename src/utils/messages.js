@@ -9,7 +9,8 @@ let message = ref({
     yours: false,
     isLocation: false,
     isProccessed: false,
-    retry: 3
+    retry: 1,
+    recieved: false,
 });
 
 
@@ -34,16 +35,6 @@ let message = ref({
     x.isProccessed = isProccessed;
     return x;
 }
-
-// function  hashMessage(str,sharedKey) {
-//     const encryptedText = CryptoJS.AES.encrypt(
-//       str,
-//       sharedKey.toLowerCase().trim()
-//     ).toString();
-//     return encryptedText;
-// }
-
-
 
 function makeid(length) {
     let result = "";

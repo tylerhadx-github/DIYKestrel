@@ -38,7 +38,7 @@ export default {
         width: 2,
       },
     }),
-    phoneLocationRefreshInterval: 30000,
+    phoneLocationRefreshInterval: 15000,
     msgObj: {
       id: 0,
       text: null,
