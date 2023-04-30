@@ -79,8 +79,8 @@
             v-if="!m.isLocation"
           >
             {{ decryptMessage(m, m.sharedKey) }}
+            <v-icon v-if="m.recieved" right>mdi-check</v-icon>
           </v-chip>
-          <div v-if="m.recieved">Recieved</div>
           </span
         >
         <span v-else class="blue--text ml-3"
@@ -90,7 +90,7 @@
             class="text-wrap"
             v-if="!m.isLocation"
           >
-            {{ decryptMessage(m, sharedKey) }}
+            {{ decryptMessage(m, m.sharedKey) }}
           </v-chip></span
         >
       </div>
@@ -144,6 +144,10 @@ let tempID = null;
 function isMessageSending() {
   return isSending;
 }
+function isMessageReceiving(){
+  return recievingMessage;
+
+}
 
 //a function that watch's recievingMessage when it is true, and sets it to false after ten seconds
 
@@ -192,6 +196,7 @@ export default {
                   }
 
                  else if(msg.startsWith("ID|")){
+                  strBuild = "";//remove old message that failed to send
                     tempID =  msg.substring(3);
                   }
 
@@ -215,6 +220,7 @@ export default {
                       messageStore.pushMessage(x);
                       //send ack
                       await sendMessage("A|" + x.id);
+                      await timer(1500);
                       recievingMessage = false;
                       tempID = null;
                     }
@@ -274,7 +280,7 @@ export default {
         if (!recievingMessage) {
           try {
             await sendMessage("ID|" + message.id);
-            await timer(2200);
+            await timer(1200);
 
             var msg = message.text;
             if (msg.length < 30) {
@@ -314,7 +320,7 @@ export default {
           prefix = "*";
         }
         await sendMessage(prefix + "|" + batch[i]);
-        await timer(2000);
+        await timer(1200);
       }
     }
     function onDisconnected() {
@@ -353,9 +359,9 @@ export default {
       messageStore.setMessages(JSON.parse(storedObject));
     }
 
-    this.intervalID = setInterval(() => {
-      this.saveMessagesToStorage();
-    }, 20000);
+ this.intervalID = setInterval(() => {
+       this.saveMessagesToStorage();
+     }, 20000);
   },
   methods: {
     startSendingTimestampMesssages() {
@@ -490,6 +496,7 @@ export default {
       return match;
     },
     saveMessagesToStorage() {
+      if(!isMessageReceiving()){
       var savedM = messageStore.getMessages();
       savedM.forEach((x) => {
         if (x.sharedKey == null) {
@@ -501,6 +508,7 @@ export default {
         localStorage.setItem("messages", JSON.stringify(savedM));
         console.log("saved messages to local storage");
       }
+    }
     },
     clearStorage() {
       localStorage.removeItem("messages");

@@ -8,8 +8,9 @@ let message = ref({
     text: null,
     yours: false,
     isLocation: false,
+    sharedKey: null,
     isProccessed: false,
-    retry: 1,
+    retry: 3,
     recieved: false,
 });
 
@@ -30,7 +31,7 @@ let message = ref({
     x.id = makeid(20);
     x.yours = yours;
     x.text = text;
-    x.sharedKey;
+    x.sharedKey =sharedKey;
     x.isLocation= isLocation;
     x.isProccessed = isProccessed;
     return x;
