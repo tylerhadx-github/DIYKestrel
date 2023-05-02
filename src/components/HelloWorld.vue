@@ -109,6 +109,7 @@
     <MapVue
       v-if="showMap"
       :dataProp="parentData"
+      :otherPin="otherPinSent"
       @messageSent="
         (msg) => {
           prepareMessage(msg, true);
@@ -135,6 +136,7 @@ export default {
     lastMessageRecieved: "",
     showMap: false,
     parentData: { lat: null, long: null },
+    otherPinSent: { lat: null, long: null },
     isDeviceConnected: false,
     intervalTimestamp: 15000,
     testing: false,
@@ -438,7 +440,6 @@ export default {
         return null;
       }
     },
-
     detectLatLong(message) {
       const regex =
         /^[-+]?([1-8]?\d(\.\d+)?|90(\.0+)?),[-+]?(180(\.0+)?|((1[0-7]\d)|([1-9]?\d))(\.\d+)?)$/;
@@ -499,7 +500,7 @@ export default {
 };
 </script>
   
-  <style scoped>
+<style scoped>
 .message.right {
   float: right;
 }
