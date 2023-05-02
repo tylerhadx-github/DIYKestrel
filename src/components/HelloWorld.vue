@@ -53,7 +53,7 @@
     </v-card>
   </v-container>
   <v-container>
-    <div>
+    <div v-if="!affirmRefresh">
       <div
         v-for="m in messages"
         :key="m.id"
@@ -69,9 +69,16 @@
             class="text-wrap"
             v-if="!m.isLocation"
           >
-            {{ decryptMessage(m, m.sharedKey) }}
+            <span>{{ decryptMessage(m, m.sharedKey) }}</span>
             <v-icon v-if="m.recieved" right>mdi-check</v-icon>
           </v-chip>
+          <v-progress-linear
+            v-if="!m.recieved && !shouldRetry"
+            color="primary"
+            height="4"
+            indeterminate
+          ></v-progress-linear>
+          <v-icon v-else-if="!m.recieved && shouldRetry">mdi-replay</v-icon>
         </span>
         <span v-else class="blue--text ml-3"
           ><v-chip
@@ -149,6 +156,9 @@ export default {
     recievingMessage: false,
     haveStart: false,
     tempID: null,
+    affirmRefresh: false,
+    progress: 0,
+    startTime: null,
   }),
   created() {},
   mounted() {
@@ -226,6 +236,10 @@ export default {
             .getMessages()
             .filter((x) => x.id == msg.substring(2))[0].recieved = true;
           this.recievingMessage = false;
+          this.affirmRefresh = true;
+          this.$forceUpdate();
+          // this.messages =messageStore.getMessages();
+          this.affirmRefresh = false;
         } else if (msg.startsWith("ID|")) {
           this.strBuild = ""; //remove old message that failed to send
           this.tempID = msg.substring(3);
@@ -488,6 +502,15 @@ export default {
     sharedKey() {
       this.lsharedKey = this.sharedKey.toLowerCase().trim();
     },
+    messages: {
+      handler(newVal) {
+        console.log("messages has changed:", newVal);
+      },
+      deep: true, // watch for nested changes
+    },
+    shouldRetry(){
+      
+    },
   },
   computed: {
     messages() {
@@ -495,6 +518,10 @@ export default {
     },
     stillSending() {
       return this.isSending;
+    },
+    shouldRetry() {
+      var res = this.progress >= 100 && Date.now() - this.startTime >= 10000;
+      return res;
     },
   },
 };
