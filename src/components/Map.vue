@@ -170,7 +170,7 @@ export default {
         geometry: point,
         symbol: symbol,
       };
-
+      this.pointGraphicLayer.removeAll();//remove previous ones and only show current
       this.pointGraphicLayer.add(graphic);
 
       this.addPointToPath(this.otherLong, this.otherLat);
