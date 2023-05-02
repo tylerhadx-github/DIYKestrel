@@ -73,12 +73,16 @@
             <v-icon v-if="m.recieved" right>mdi-check</v-icon>
           </v-chip>
           <v-progress-linear
-            v-if="!m.recieved && !shouldRetry"
+            v-if="!m.recieved && !shouldRetry(m.sentDate) && !m.isLocation"
             color="primary"
             height="4"
             indeterminate
           ></v-progress-linear>
-          <v-icon v-else-if="!m.recieved && shouldRetry">mdi-replay</v-icon>
+          <v-icon
+            v-else-if="!m.recieved && shouldRetry(m.sentDate) && !m.isLocation"
+            @click="addToQueue(m)"
+            >mdi-replay</v-icon
+          >
         </span>
         <span v-else class="blue--text ml-3"
           ><v-chip
@@ -159,6 +163,7 @@ export default {
     affirmRefresh: false,
     progress: 0,
     startTime: null,
+    messageType: 0, //0=msg, 1= pin , 2 = location
   }),
   created() {},
   mounted() {
@@ -168,7 +173,9 @@ export default {
     }
 
     this.intervalID = setInterval(() => {
+      this.affirmRefresh = true;
       this.saveMessagesToStorage();
+      this.affirmRefresh = false;
     }, 20000);
   },
   methods: {
@@ -240,9 +247,18 @@ export default {
           this.$forceUpdate();
           // this.messages =messageStore.getMessages();
           this.affirmRefresh = false;
-        } else if (msg.startsWith("ID|")) {
-          this.strBuild = ""; //remove old message that failed to send
-          this.tempID = msg.substring(3);
+        } else if (msg.startsWith("LID|")) {
+          this.messageType = 2;
+          this.strBuild = "";
+          this.tempID = msg.substring(4);
+        } else if (msg.startsWith("PID|")) {
+          this.messageType = 1;
+          this.strBuild = "";
+          this.tempID = msg.substring(4);
+        } else if (msg.startsWith("MID|")) {
+          this.messageType = 0;
+          this.strBuild = "";
+          this.tempID = msg.substring(4);
         } else if (msg.startsWith("0|")) {
           this.haveStart == true;
           this.strBuild = this.strBuild + msg.substring(2);
@@ -257,11 +273,17 @@ export default {
           if (this.tempID != null) {
             x.id = this.tempID;
           }
-          if (!msg.includes("+")) {
-            messageStore.pushMessage(x);
+          //look for only + at the start
+          if (!msg.substring(0, 2).includes("+")) {
+            
             //send ack
-            await this.sendMessage("A|" + x.id);
-            await this.timer(1500);
+            if (this.messageType == 0) {
+              messageStore.pushMessage(x);
+              await this.sendMessage("A|" + x.id);
+              await this.timer(1500);
+            }else{
+              this.decryptMessage(x,x.sharedKey);//detect lat long but not flash messages anymore
+            }
             this.recievingMessage = false;
             this.tempID = null;
           }
@@ -293,7 +315,17 @@ export default {
         //try to not talk over each other
         if (!this.recievingMessage) {
           try {
-            await this.sendMessage("ID|" + message.id);
+            // MID= message id
+            // LID= Location ID
+            // PID = Pin ID       all message id's just no need to render
+            if (!message.isLocation && !message.sentPin) {
+              await this.sendMessage("MID|" + message.id);
+            } else if (message.sentPin) {
+              await this.sendMessage("PID|" + message.id);
+            } else {
+              await this.sendMessage("LID|" + message.id);
+            }
+
             await this.timer(1200);
 
             var msg = message.text;
@@ -497,6 +529,19 @@ export default {
       this.messages = [];
       window.location.reload();
     },
+    shouldRetry(dt) {
+      let oldDate = new Date();
+      if (Date.parse(dt)) {
+        oldDate = new Date(dt);
+      }
+      const now = new Date();
+      const past = new Date(now.getTime() - 20000);
+      if (oldDate.getTime() < past.getTime()) {
+        return true;
+      } else {
+        return false;
+      }
+    },
   },
   watch: {
     sharedKey() {
@@ -508,9 +553,6 @@ export default {
       },
       deep: true, // watch for nested changes
     },
-    shouldRetry(){
-      
-    },
   },
   computed: {
     messages() {
@@ -518,10 +560,6 @@ export default {
     },
     stillSending() {
       return this.isSending;
-    },
-    shouldRetry() {
-      var res = this.progress >= 100 && Date.now() - this.startTime >= 10000;
-      return res;
     },
   },
 };

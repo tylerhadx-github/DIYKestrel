@@ -12,6 +12,7 @@ let message = ref({
     isProccessed: false,
     retry: 3,
     recieved: false,
+    sentDate: null
 });
 
 
@@ -27,6 +28,17 @@ let message = ref({
 }
 
  function getNewMessage(yours, text,isLocation,sharedKey,isProccessed){
+  const date = new Date();
+  const options = {
+    month: '2-digit',
+    day: '2-digit',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true
+  };
+  const formattedDate = date.toLocaleDateString('en-US', options);
+
     var x = Object.assign({}, message);
     x.id = makeid(20);
     x.yours = yours;
@@ -34,6 +46,8 @@ let message = ref({
     x.sharedKey =sharedKey;
     x.isLocation= isLocation;
     x.isProccessed = isProccessed;
+    x.sentDate = date;
+    x.prettyDateTime = formattedDate;
     return x;
 }
 

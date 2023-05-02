@@ -1,6 +1,4 @@
 <template>
-      <v-btn @click="addPoint">Add Point</v-btn>
-
   <div
     id="viewDiv"
     :width="'100%'"
