@@ -20,7 +20,7 @@ import Graphic from "@arcgis/core/Graphic";
 import Polyline from "@arcgis/core/geometry/Polyline";
 import BasemapGallery from "@arcgis/core/widgets/BasemapGallery";
 import Expand from "@arcgis/core/widgets/Expand";
-import PictureMarkerSymbol from "@arcgis/core/symbols/PictureMarkerSymbol";
+// import PictureMarkerSymbol from "@arcgis/core/symbols/PictureMarkerSymbol";
 export default {
   name: "MapVue",
   props: ["dataProp", "otherPin"],
