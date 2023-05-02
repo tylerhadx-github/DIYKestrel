@@ -18,18 +18,14 @@ import Locate from "@arcgis/core/widgets/Locate";
 import Graphic from "@arcgis/core/Graphic";
 import Polyline from "@arcgis/core/geometry/Polyline";
 import BasemapGallery from "@arcgis/core/widgets/BasemapGallery";
-import Expand from '@arcgis/core/widgets/Expand';
-
+import Expand from "@arcgis/core/widgets/Expand";
 
 export default {
   name: "MapVue",
-  props: ['dataProp'],
+  props: ["dataProp"],
   data: () => ({
     pointGraphic: null,
-    path: new Polyline({
-      paths: [[]],
-      spatialReference: { wkid: 4326 },
-    }),
+    path: [],
     pathGraphic: new Graphic({
       geometry: null,
       symbol: {
@@ -44,6 +40,8 @@ export default {
       text: null,
       yours: true,
     },
+    otherLat: null,
+    otherLong: null,
   }),
   mounted() {
     var _this = this;
@@ -70,36 +68,43 @@ export default {
         zoom: 9,
       });
 
+      this.graphicsLayer = new GraphicsLayer();
+      map.add(this.graphicsLayer);
+
+      this.pointGraphicLayer = new GraphicsLayer();
+      map.add(this.pointGraphicLayer);
       
-        this.graphicsLayer = new GraphicsLayer();
-        map.add(this.graphicsLayer);
 
-        const locateWidget = new Locate({
-          view: view,
-        });
+      const locateWidget = new Locate({
+        view: view,
+      });
 
-        view.ui.add(locateWidget, "top-left");
-      
-//      this.pathGraphic.geometry = this.path;
-  //    view.ui.graphics.add(this.pathGraphic);
+      view.ui.add(locateWidget, "top-left");
 
-        var basemapGallery = new BasemapGallery({
-          view: view,
-          container: document.createElement("div"),
-        });
-        var bgExpand = new Expand({
-          view: view,
-          content: basemapGallery,
-        });
-        basemapGallery.watch("activeBasemap", function () {
-          var mobileSize =
-            view.heightBreakpoint === "xsmall" ||
-            view.widthBreakpoint === "xsmall";
-          if (mobileSize) {
-            bgExpand.collapse();
-          }
-        });
-         view.ui.add(bgExpand, "top-right");
+      //      this.pathGraphic.geometry = this.path;
+      //    view.ui.graphics.add(this.pathGraphic);
+
+      var basemapGallery = new BasemapGallery({
+        view: view,
+        container: document.createElement("div"),
+      });
+      var bgExpand = new Expand({
+        view: view,
+        content: basemapGallery,
+      });
+      basemapGallery.watch("activeBasemap", function () {
+        var mobileSize =
+          view.heightBreakpoint === "xsmall" ||
+          view.widthBreakpoint === "xsmall";
+        if (mobileSize) {
+          bgExpand.collapse();
+        }
+      });
+      view.ui.add(bgExpand, "top-right");
+
+
+
+  
     },
     getPhoneLocation() {
       var _this = this;
@@ -118,42 +123,72 @@ export default {
       console.log(msg);
       this.$emit("messageSent", coords.latitude + "," + coords.longitude);
     },
-    pushOtherLatLongToPath(lat, long) {
-      this.path.paths[0].push([long, lat]);
-      this.pathGraphic.geometry = this.path;
-      this.graphicsLayer.add(this.pathGraphic);
-    },
+    addPointToPath(longitude, latitude) {
+      // Add the new point to the path array
+      this.path.push([longitude, latitude]);
 
+      // Force the computed property to recompute and trigger the watcher
+      this.polyline;
+    },
   },
-  computed:{
-    computedProp(){
+  computed: {
+    computedProp() {
       return this.dataProp;
-    }
+    },
+    polyline() {
+      if (this.path.length > 0) {
+        return new Polyline({
+          paths: [this.path],
+          spatialReference: { wkid: 4326 } // assuming the points are in WGS84
+        });
+      } else {
+        return null;
+      }
+    },
   },
   watch: {
-    computedProp(newVal, oldVal){
+    computedProp(newVal, oldVal) {
       const point = new Point({
-          longitude: newVal.long,
-          latitude: newVal.lat,
-        });
+        longitude: newVal.long,
+        latitude: newVal.lat,
+      });
 
-        //this.pushOtherLatLongToPath(newVal.lat, newVal.long);
+      this.otherLat = newVal.lat;
+       this.otherLong = newVal.long;
 
-        const symbol = new SimpleMarkerSymbol({
+       
+      const symbol = new SimpleMarkerSymbol({
+        color: [226, 119, 40],
+        size: 12,
+        outline: {
+          color: [255, 255, 255],
+          width: 1,
+        },
+      });
+
+      const graphic = {
+        geometry: point,
+        symbol: symbol,
+      };
+
+      this.pointGraphicLayer.add(graphic);
+
+      this.addPointToPath(this.otherLong, this.otherLat);
+    },
+    polyline(newPolyline) {
+      // Remove the old polyline graphic from the graphics layer
+      this.graphicsLayer.removeAll();
+
+      // Create a new polyline graphic using the new polyline geometry and add it to the graphics layer
+      const polylineGraphic = {
+        geometry: newPolyline,
+        symbol: {
+          type: "simple-line",
           color: [226, 119, 40],
-          size: 12,
-          outline: {
-            color: [255, 255, 255],
-            width: 1,
-          },
-        });
-
-        const graphic = {
-          geometry: point,
-          symbol: symbol,
-        };
-
-        this.graphicsLayer.add(graphic);
+          width: 4,
+        },
+      };
+      this.graphicsLayer.add(polylineGraphic);
     },
   },
 };
