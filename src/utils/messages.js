@@ -12,7 +12,8 @@ let message = ref({
     isProccessed: false,
     retry: 3,
     recieved: false,
-    sentDate: null
+    sentDate: null,
+    isPin: false,
 });
 
 
@@ -27,7 +28,7 @@ let message = ref({
   return messages.value;
 }
 
- function getNewMessage(yours, text,isLocation,sharedKey,isProccessed){
+ function getNewMessage(yours, text,isLocation,sharedKey,isProccessed, isPin){
   const date = new Date();
   const options = {
     month: '2-digit',
@@ -48,6 +49,7 @@ let message = ref({
     x.isProccessed = isProccessed;
     x.sentDate = date;
     x.prettyDateTime = formattedDate;
+    x.isPin = isPin;
     return x;
 }
 

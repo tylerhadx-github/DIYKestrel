@@ -21,7 +21,7 @@ import Expand from "@arcgis/core/widgets/Expand";
 // import PictureMarkerSymbol from "@arcgis/core/symbols/PictureMarkerSymbol";
 export default {
   name: "MapVue",
-  props: ["dataProp", "otherPin"],
+  props: ["dataProp", "otherPin", "shareLocationUpdates"],
   data: () => ({
     pointGraphic: null,
     path: [],
@@ -43,10 +43,10 @@ export default {
     otherLong: null,
   }),
   mounted() {
-    var _this = this;
-    this.getPhoneLocation();
+    //var _this = this;
+    //this.getPhoneLocation();
     this.intervalID = setInterval(function () {
-      _this.getPhoneLocation();
+      //_this.getPhoneLocation();
     }, this.phoneLocationRefreshInterval);
 
     this.LoadData();
@@ -150,6 +150,10 @@ export default {
         });
         this.pinGraphicLayer.removeAll();
         this.pinGraphicLayer.add(pointGraphic);
+
+        var msg = "sending ping: " +mapPoint.latitude + "," + mapPoint.longitude;
+      console.log(msg);
+      this.$emit("pinSent", mapPoint.latitude + "," + mapPoint.longitude);
       },
       
   },
@@ -206,7 +210,7 @@ export default {
         latitude: newVal.lat,
       });
       const symbol = new SimpleMarkerSymbol({
-        color: [226, 119, 40],
+        color: [128, 0, 128],
         size: 12,
         outline: {
           color: [255, 255, 255],
@@ -236,6 +240,15 @@ export default {
       };
       this.graphicsLayer.add(polylineGraphic);
     },
+    shareLocationUpdates(newVal,oldVal){
+      if(newVal){
+         var _this = this;
+        this.getPhoneLocation();
+        this.intervalID = setInterval(function () {
+          _this.getPhoneLocation();
+        }, this.phoneLocationRefreshInterval);
+      }
+    }
   },
 };
 </script>

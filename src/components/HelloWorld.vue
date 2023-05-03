@@ -25,6 +25,9 @@
           <v-btn @click="toggleMap()" :disabled="!device">
             <span v-if="showMap">Hide </span><span v-else>Show </span>&nbsp;Map
           </v-btn>
+          <v-btn @click="shareLocationBtn()" :disabled="!device">
+            Share Location
+          </v-btn>
 
           <v-btn
             @click="startSendingTimestampMesssages()"
@@ -67,7 +70,7 @@
             color="green"
             size="x-large"
             class="text-wrap"
-            v-if="!m.isLocation"
+            v-if="!m.isLocation && !m.isPin"
           >
             <span>{{ decryptMessage(m, m.sharedKey) }}</span>
             <v-icon v-if="m.recieved" right>mdi-check</v-icon>
@@ -79,7 +82,12 @@
             indeterminate
           ></v-progress-linear>
           <v-icon
-            v-else-if="!m.recieved && shouldRetry(m.sentDate) && !m.isLocation"
+            v-else-if="
+              !m.recieved &&
+              shouldRetry(m.sentDate) &&
+              !m.isLocation &&
+              !m.isPin
+            "
             @click="addToQueue(m)"
             >mdi-replay</v-icon
           >
@@ -111,19 +119,25 @@
       clearable
       label="Message"
       type="text"
-      @click:append="prepareMessage(tempMessage, false)"
-      @keydown.enter="prepareMessage(tempMessage, false)"
+      @click:append="prepareMessage(tempMessage, false, false)"
+      @keydown.enter="prepareMessage(tempMessage, false, false)"
       maxlength="180"
       counter
     ></v-text-field>
     <br />
     <MapVue
       v-if="showMap"
+      :shareLocationUpdates="shareLocation"
       :dataProp="parentData"
       :otherPin="otherPinSent"
       @messageSent="
         (msg) => {
-          prepareMessage(msg, true);
+          prepareMessage(msg, true, false);
+        }
+      "
+      @pinSent="
+        (msg) => {
+          prepareMessage(msg, false, true);
         }
       "
     ></MapVue>
@@ -164,6 +178,7 @@ export default {
     progress: 0,
     startTime: null,
     messageType: 0, //0=msg, 1= pin , 2 = location
+    shareLocation: false,
   }),
   created() {},
   mounted() {
@@ -179,6 +194,9 @@ export default {
     }, 20000);
   },
   methods: {
+    shareLocationBtn() {
+      this.shareLocation = !this.shareLocation;
+    },
     async newBLEConnection() {
       this.device = await navigator.bluetooth.requestDevice({
         filters: [
@@ -275,14 +293,17 @@ export default {
           }
           //look for only + at the start
           if (!msg.substring(0, 2).includes("+")) {
-            
             //send ack
             if (this.messageType == 0) {
               messageStore.pushMessage(x);
               await this.sendMessage("A|" + x.id);
               await this.timer(1500);
+            } else if(this.messageType == 1) {
+              x.isPin = true;
+              this.decryptMessage(x, x.sharedKey); //detect lat long but not flash messages anymore
             }else{
-              this.decryptMessage(x,x.sharedKey);//detect lat long but not flash messages anymore
+              x.isLocation = true;
+              this.decryptMessage(x, x.sharedKey); //detect lat long but not flash messages anymore
             }
             this.recievingMessage = false;
             this.tempID = null;
@@ -318,9 +339,9 @@ export default {
             // MID= message id
             // LID= Location ID
             // PID = Pin ID       all message id's just no need to render
-            if (!message.isLocation && !message.sentPin) {
+            if (!message.isLocation && !message.isPin) {
               await this.sendMessage("MID|" + message.id);
-            } else if (message.sentPin) {
+            } else if (message.isPin) {
               await this.sendMessage("PID|" + message.id);
             } else {
               await this.sendMessage("LID|" + message.id);
@@ -394,6 +415,7 @@ export default {
             second: "numeric",
             hour12: true,
           }),
+        false,
         false
       );
 
@@ -409,6 +431,7 @@ export default {
               second: "numeric",
               hour12: true,
             }),
+          false,
           false
         );
       }, this.intervalTimestamp);
@@ -416,13 +439,14 @@ export default {
     toggleMap() {
       this.showMap = !this.showMap;
     },
-    prepareMessage(msg, isLatLong = false) {
+    prepareMessage(msg, isLatLong = false, isPin = false) {
       var x = messageStore.getNewMessage(
         true,
         this.hashMessage(msg),
         isLatLong,
         this.sharedKey,
-        false
+        false,
+        isPin
       );
       messageStore.pushMessage(x);
       this.saveMessagesToStorage();
@@ -474,7 +498,7 @@ export default {
 
         if (!message.isProccessed) {
           message.isProccessed = true;
-          if (this.detectLatLong(decryptedText)) {
+          if (this.detectLatLong(decryptedText, message.isPin)) {
             message.isLocation = true;
           }
         }
@@ -486,7 +510,7 @@ export default {
         return null;
       }
     },
-    detectLatLong(message) {
+    detectLatLong(message, isPin) {
       const regex =
         /^[-+]?([1-8]?\d(\.\d+)?|90(\.0+)?),[-+]?(180(\.0+)?|((1[0-7]\d)|([1-9]?\d))(\.\d+)?)$/;
       const match = message.match(regex);
@@ -499,10 +523,18 @@ export default {
           long = "-" + long;
         }
 
-        this.parentData.lat = null;
-        this.parentData.long = null;
-        var temp = { lat: lat, long: long };
-        this.parentData = temp;
+        if (isPin) {
+          this.otherPinSent.lat = null;
+          this.otherPinSent.long = null;
+          var tempPin = { lat: lat, long: long };
+          this.otherPinSent = tempPin;
+        } else {
+          this.parentData.lat = null;
+          this.parentData.long = null;
+          var temp = { lat: lat, long: long };
+          this.parentData = temp;
+        }
+
         console.log(`Latitude: ${lat}, Longitude: ${long}`);
       } else {
         //console.log("No latitude and longitude found in string.");
