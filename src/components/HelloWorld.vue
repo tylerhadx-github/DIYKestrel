@@ -25,7 +25,7 @@
           <v-btn @click="toggleMap()" :disabled="!device">
             <span v-if="showMap">Hide </span><span v-else>Show </span>&nbsp;Map
           </v-btn>
-          <v-btn @click="shareLocation = !shareLocation()" :disabled="!device">
+          <v-btn @click="shareLocation = !shareLocation" :disabled="!device">
             Share Location
           </v-btn>
 
@@ -281,7 +281,7 @@ export default {
             var ID = msg.substring(2);
             var localMessages = messageStore.messages.value.filter((x) => x.id == ID);
             if(localMessages.length>0){
-              [0].recieved = true;
+              localMessages[0].recieved = true;
             }
             else{
               console.log("recived a affirm but cannot find id?");
