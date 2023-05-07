@@ -279,7 +279,7 @@ export default {
           //ack msg recieved
           if (msg.length > 2) {
             var ID = msg.substring(2);
-            var localMessages = messageStore.messages.filter((x) => x.id == ID);
+            var localMessages = messageStore.messages.value.filter((x) => x.id == ID);
             if(localMessages.length>0){
               [0].recieved = true;
             }
