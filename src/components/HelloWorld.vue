@@ -599,9 +599,11 @@ export default {
       }
     },
     clearStorage() {
+      if (window.confirm("Are you sure you want to delete this chat thread?")) {
       localStorage.removeItem("messages");
       this.messages = [];
       window.location.reload();
+      }
     },
     shouldRetry(dt) {
       let oldDate = new Date();
