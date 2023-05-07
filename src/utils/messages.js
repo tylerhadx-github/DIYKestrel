@@ -23,6 +23,12 @@ let message = ref({
  function pushMessage(message){
     messages.value.push(message);
 }
+function removeMessage(message) {
+  const index = messages.value.indexOf(message);
+  if (index !== -1) {
+    messages.value.splice(index, 1);
+  }
+}
 
  function getMessages() {
   return messages.value;
@@ -70,4 +76,4 @@ function makeid(length) {
 
 
 
-  export default { messages,  getNewMessage, getMessages, setMessages, pushMessage, makeid};
+  export default { messages,  getNewMessage, getMessages, setMessages, pushMessage, makeid, removeMessage};

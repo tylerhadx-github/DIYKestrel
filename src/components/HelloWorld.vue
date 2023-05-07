@@ -98,16 +98,22 @@
             height="4"
             indeterminate
           ></v-progress-linear>
-          <v-icon
-            v-else-if="
+          <div  v-else-if="
               !m.recieved &&
               shouldRetry(m.sentDate) &&
               !m.isLocation &&
               !m.isPin
-            "
+            ">
+          <v-icon
             @click="addToQueue(m)"
             >mdi-replay</v-icon
           >
+          <v-icon
+
+            @click="removeFromQueue(m)"
+            >mdi-delete</v-icon
+          >
+        </div>
         </span>
         <span v-else class="blue--text ml-3"
           ><v-chip
@@ -494,6 +500,9 @@ export default {
     addToQueue(x) {
       this.messageQueue.push(x);
       this.batchSendMessage(x);
+    },
+    removeFromQueue(x){
+     messageStore.removeMessage(x);
     },
     requestBackgroundSync() {
       Notification.requestPermission((permission) => {
