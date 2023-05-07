@@ -279,9 +279,9 @@ export default {
           //ack msg recieved
           if (msg.length > 2) {
             var ID = msg.substring(2);
-            messageStore
-              .getMessages()
-              .filter((x) => x.id == ID)[0].recieved = true;
+            var localMessages = messageStore.getMessages();
+
+            localMessages.filter((x) => x.id == ID)[0].recieved = true;
             this.recievingMessage = false;
             this.affirmRefresh = true;
             this.$forceUpdate();
