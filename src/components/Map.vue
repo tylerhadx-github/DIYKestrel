@@ -77,8 +77,11 @@ export default {
       this.pointGraphicLayer = new GraphicsLayer();
       map.add(this.pointGraphicLayer);
       
-      this.pinGraphicLayer = new GraphicsLayer();
-      map.add(this.pinGraphicLayer);
+      this.theirPinGraphicLayer = new GraphicsLayer();
+      map.add(this.theirPinGraphicLayer);
+
+      this.yourPinGraphicLayer = new GraphicsLayer();
+      map.add(this.yourPinGraphicLayer);
 
       const locateWidget = new Locate({
         view: view,
@@ -148,8 +151,8 @@ export default {
             }
           }
         });
-        this.pinGraphicLayer.removeAll();
-        this.pinGraphicLayer.add(pointGraphic);
+        this.yourPinGraphicLayer.removeAll();
+        this.yourPinGraphicLayer.add(pointGraphic);
 
         var msg = "sending ping: " +mapPoint.latitude + "," + mapPoint.longitude;
       console.log(msg);
@@ -222,8 +225,8 @@ export default {
         geometry: point,
         symbol: symbol,
       };
-      this.pinGraphicLayer.removeAll();//remove previous ones and only show current
-      this.pinGraphicLayer.add(graphic);
+      this.theirPinGraphicLayer.removeAll();//remove previous ones and only show current
+      this.theirPinGraphicLayer.add(graphic);
     },
     polyline(newPolyline) {
       // Remove the old polyline graphic from the graphics layer

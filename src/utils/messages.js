@@ -70,4 +70,4 @@ function makeid(length) {
 
 
 
-  export default { messages,  getNewMessage, getMessages, setMessages, pushMessage};
+  export default { messages,  getNewMessage, getMessages, setMessages, pushMessage, makeid};

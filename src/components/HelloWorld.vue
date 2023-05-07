@@ -51,6 +51,20 @@
               v-model="sharedKey"
             ></v-text-field>
           </v-col>
+          <v-col>
+            <v-btn @click="generateKey()" v-if="!sharedKey">Generate Key</v-btn>
+
+            <QRCreator v-if="sharedKey" :sharedKey="sharedKey"></QRCreator>
+            <qrreader
+              v-if="!sharedKey"
+              @sharedKeyRecieved="
+                (msg) => {
+                  sharedKey = msg;
+                  scanKey = false;
+                }
+              "
+            ></qrreader>
+          </v-col>
         </v-row>
       </v-card-text>
     </v-card>
@@ -147,12 +161,15 @@
   <script>
 import MapVue from "./Map.vue";
 import messageStore from "@/utils/messages";
+import qrreader from "./QRReader.vue";
+import QRCreator from "./QRCreator.vue";
 
 export default {
   name: "HelloWorld",
-  components: { MapVue },
+  components: { MapVue, qrreader, QRCreator },
   setup() {},
   data: () => ({
+    scanKey: false,
     device: null,
     sharedKey: null,
     tempMessage: null,
@@ -169,7 +186,6 @@ export default {
     server: null,
     strBuild: null,
     messageQueue: [],
-    lsharedKey: "",
     isSending: false,
     recievingMessage: false,
     haveStart: false,
@@ -194,6 +210,9 @@ export default {
     }, 20000);
   },
   methods: {
+    generateKey() {
+      this.sharedKey = messageStore.makeid(200);
+    },
     shareLocationBtn() {
       this.shareLocation = !this.shareLocation;
     },
@@ -285,7 +304,7 @@ export default {
             false,
             this.strBuild + msg.substring(2),
             false,
-            this.lsharedKey,
+            this.sharedKey,
             false
           );
           if (this.tempID != null) {
@@ -298,10 +317,10 @@ export default {
               messageStore.pushMessage(x);
               await this.sendMessage("A|" + x.id);
               await this.timer(1500);
-            } else if(this.messageType == 1) {
+            } else if (this.messageType == 1) {
               x.isPin = true;
               this.decryptMessage(x, x.sharedKey); //detect lat long but not flash messages anymore
-            }else{
+            } else {
               x.isLocation = true;
               this.decryptMessage(x, x.sharedKey); //detect lat long but not flash messages anymore
             }
@@ -485,7 +504,7 @@ export default {
     hashMessage(str) {
       const encryptedText = this.$CryptoJS.AES.encrypt(
         str,
-        this.sharedKey ? this.sharedKey.toLowerCase().trim() : ""
+        this.sharedKey
       ).toString();
       return encryptedText;
     },
@@ -576,9 +595,6 @@ export default {
     },
   },
   watch: {
-    sharedKey() {
-      this.lsharedKey = this.sharedKey.toLowerCase().trim();
-    },
     messages: {
       handler(newVal) {
         console.log("messages has changed:", newVal);
