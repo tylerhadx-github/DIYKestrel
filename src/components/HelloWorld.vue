@@ -25,16 +25,15 @@
           <v-btn @click="toggleMap()" :disabled="!device">
             <span v-if="showMap">Hide </span><span v-else>Show </span>&nbsp;Map
           </v-btn>
-          <v-btn @click="shareLocationBtn()" :disabled="!device">
+          <v-btn @click="shareLocation = !shareLocation()" :disabled="!device">
             Share Location
           </v-btn>
 
           <v-btn
-            @click="startSendingTimestampMesssages()"
+            @click="sendingTimestamps = !sendingTimestamps; timeStampMessageSender(sendingTimestamps)"
             :disabled="!device"
-            v-if="!testing"
           >
-            Send Timestamps
+            <span v-if="sendingTimestamps">Stop </span><span v-else>Start </span>&nbsp;Sending Timestamps
           </v-btn>
           <v-btn @click="clearStorage()">Clear Storage</v-btn>
         </v-row>
@@ -169,6 +168,7 @@ export default {
   components: { MapVue, qrreader, QRCreator },
   setup() {},
   data: () => ({
+    sendingTimestamps: false,
     scanKey: false,
     device: null,
     sharedKey: null,
@@ -212,9 +212,6 @@ export default {
   methods: {
     generateKey() {
       this.sharedKey = messageStore.makeid(200);
-    },
-    shareLocationBtn() {
-      this.shareLocation = !this.shareLocation;
     },
     async newBLEConnection() {
       this.device = await navigator.bluetooth.requestDevice({
@@ -419,27 +416,18 @@ export default {
 
       new Notification(title, options);
     },
-    startSendingTimestampMesssages() {
+    timeStampMessageSender(sending) {
       var _this = this;
       this.testing = true;
-      // send one right away
-      this.prepareMessage(
-        "Timestamp Test Message " +
-          new Date().toLocaleString("en-US", {
-            month: "2-digit",
-            day: "2-digit",
-            year: "numeric",
-            hour: "numeric",
-            minute: "numeric",
-            second: "numeric",
-            hour12: true,
-          }),
-        false,
-        false
-      );
+      
+      if (!sending) {
+        clearInterval(this.intervalID);
+        this.sendingTimestamps = false;
+      } else {
 
-      this.intervalID = setInterval(function () {
-        _this.prepareMessage(
+        this.sendingTimestamps = true;
+        // send one right away
+        this.prepareMessage(
           "Timestamp Test Message " +
             new Date().toLocaleString("en-US", {
               month: "2-digit",
@@ -453,7 +441,24 @@ export default {
           false,
           false
         );
-      }, this.intervalTimestamp);
+
+        this.intervalID = setInterval(function () {
+          _this.prepareMessage(
+            "Timestamp Test Message " +
+              new Date().toLocaleString("en-US", {
+                month: "2-digit",
+                day: "2-digit",
+                year: "numeric",
+                hour: "numeric",
+                minute: "numeric",
+                second: "numeric",
+                hour12: true,
+              }),
+            false,
+            false
+          );
+        }, this.intervalTimestamp);
+      }
     },
     toggleMap() {
       this.showMap = !this.showMap;
