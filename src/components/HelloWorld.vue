@@ -30,10 +30,14 @@
           </v-btn>
 
           <v-btn
-            @click="sendingTimestamps = !sendingTimestamps; timeStampMessageSender(sendingTimestamps)"
+            @click="
+              sendingTimestamps = !sendingTimestamps;
+              timeStampMessageSender(sendingTimestamps);
+            "
             :disabled="!device"
           >
-            <span v-if="sendingTimestamps">Stop </span><span v-else>Start </span>&nbsp;Sending Timestamps
+            <span v-if="sendingTimestamps">Stop </span
+            ><span v-else>Start </span>&nbsp;Sending Timestamps
           </v-btn>
           <v-btn @click="clearStorage()">Clear Storage</v-btn>
         </v-row>
@@ -273,14 +277,17 @@ export default {
 
         if (msg.startsWith("A|")) {
           //ack msg recieved
-          messageStore
-            .getMessages()
-            .filter((x) => x.id == msg.substring(2))[0].recieved = true;
-          this.recievingMessage = false;
-          this.affirmRefresh = true;
-          this.$forceUpdate();
-          // this.messages =messageStore.getMessages();
-          this.affirmRefresh = false;
+          if (msg.length > 2) {
+            var ID = msg.substring(2);
+            messageStore
+              .getMessages()
+              .filter((x) => x.id == ID)[0].recieved = true;
+            this.recievingMessage = false;
+            this.affirmRefresh = true;
+            this.$forceUpdate();
+            // this.messages =messageStore.getMessages();
+            this.affirmRefresh = false;
+          }
         } else if (msg.startsWith("LID|")) {
           this.messageType = 2;
           this.strBuild = "";
@@ -419,12 +426,11 @@ export default {
     timeStampMessageSender(sending) {
       var _this = this;
       this.testing = true;
-      
+
       if (!sending) {
         clearInterval(this.intervalID);
         this.sendingTimestamps = false;
       } else {
-
         this.sendingTimestamps = true;
         // send one right away
         this.prepareMessage(

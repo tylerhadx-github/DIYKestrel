@@ -12,20 +12,20 @@ import { QrStream } from "vue3-qr-reader";
 export default {
   components: { QrStream },
   methods: {
-    // onDecode(decodedString) {
-    //   console.log("scanned qr code");
-    //   this.$emit("sharedKeyRecieved", decodedString);
-    // },
+    onDecode(decodedString) {
+      console.log("scanned qr code");
+      this.$emit("sharedKeyRecieved", decodedString);
+    },
   },
   setup() {
-    var _this = this;
-    function onDecode(data) {
-      console.log("scanned qr code");
-      _this.$emit("sharedKeyRecieved", data);
-    }
-    return {
-      onDecode,
-    };
+    // var _this = this;
+    // function onDecode(data) {
+    //   console.log("scanned qr code");
+    //   _this.$emit("sharedKeyRecieved", data);
+    // }
+    // return {
+    //   onDecode,
+    // };
   },
   data: () => ({
     scanKey: false,
