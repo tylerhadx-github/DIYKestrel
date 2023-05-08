@@ -47,7 +47,7 @@ function removeMessage(message) {
   const formattedDate = date.toLocaleDateString('en-US', options);
 
     var x = Object.assign({}, message);
-    x.id = makeid(20);
+    x.id = makeid(15);
     x.yours = yours;
     x.text = text;
     x.sharedKey =sharedKey;
