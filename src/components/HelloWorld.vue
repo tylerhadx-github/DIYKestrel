@@ -285,7 +285,7 @@ export default {
           //ack msg recieved
           if (msg.length > 2) {
             var ID = msg.substring(2);
-            var localMessages = messageStore.messages.value.filter((x) => x.id == ID);
+            var localMessages = messageStore.getMessages().filter((x) => x.id == ID);
             if(localMessages.length>0){
               localMessages[0].recieved = true;
             }
@@ -525,9 +525,11 @@ export default {
         );
     },
     hashMessage(str) {
+      var iv = this.$CryptoJS.enc.Hex.parse("101112131415161718191a1b1c1d1e1f");
       const encryptedText = this.$CryptoJS.AES.encrypt(
         str,
-        this.sharedKey
+        this.sharedKey,
+        {iv: iv}
       ).toString();
       return encryptedText;
     },
