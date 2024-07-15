@@ -10,7 +10,7 @@ import { fileURLToPath, URL } from 'node:url'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: '/',
+  base: '/DIYKestrel',
   plugins: [
     vue(),
     // https://github.com/vuetifyjs/vuetify-loader/tree/next/packages/vite-plugin
@@ -21,9 +21,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       manifest: {
-        name: 'LoraToArduino',
-        short_name: 'LoraText',
-        description: 'offline messenger',
+        name: 'DIYKestrel',
+        short_name: 'DIYKestrel',
+        description: 'ble viewer for atmosphere',
         theme_color: "#4DBA87",
         background_color: "#000000",
         display: "standalone",
