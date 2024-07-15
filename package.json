@@ -1,5 +1,5 @@
 {
-  "name": "vuetoarduino",
+  "name": "DIYKestrel",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -10,16 +10,10 @@
     "dev": "vite"
   },
   "dependencies": {
-    "@arcgis/core": "^4.26.5",
-    "@chenfengyuan/vue-qrcode": "^2.0.0",
     "@mdi/font": "5.9.55",
-    "core-js": "^3.8.3",
-    "qrcode": "^1.5.3",
     "roboto-fontface": "*",
     "vue": "^3.2.47",
-    "vue-cryptojs": "^2.3.1",
     "vue-router": "^4.1.6",
-    "vue3-qr-reader": "^1.0.0",
     "vuetify": "^3.0.0-beta.0",
     "webfontloader": "^1.0.0"
   },
