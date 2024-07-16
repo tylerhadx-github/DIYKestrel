@@ -1,13 +1,32 @@
 <template>
   <div id="app">
     <h1>Arduino BLE Sensor Data</h1>
-    <button @click="connect">Connect to Device</button>
-    <div v-if="connected">
-      <p>Temperature: {{ temperature }} °C / {{ temperatureFahrenheit }} °F</p>
-      <p>Pressure: {{ pressure }} kPa / {{ pressureInHg }} inHg</p>
-      <p>Humidity: {{ humidity }} %</p>
-      <p>Altitude: {{ altitude }} meters / {{ altitudeFeet }} feet</p>
-    </div>
+    <v-btn @click="connectToDevice">Connect to Device</v-btn>
+    <div v-if="error" class="error">{{ error }}</div>
+    <v-container v-if="isConnected" fluid>
+      <v-simple-table style="text-align: left">
+        <thead>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="measurement">Altitude</td>
+            <td class="value">{{ altitudeF }} feet</td>
+          </tr>
+          <tr>
+            <td class="measurement">Pressure</td>
+            <td class="value">{{ pressureH }} inHg</td>
+          </tr>
+          <tr>
+            <td class="measurement">Temperature</td>
+            <td class="value">{{ temperatureF }} °F</td>
+          </tr>
+          <tr>
+            <td class="measurement">Humidity</td>
+            <td class="value">{{ humidity }} %</td>
+          </tr>
+        </tbody>
+      </v-simple-table>
+    </v-container>
   </div>
 </template>
 
@@ -15,67 +34,98 @@
 export default {
   data() {
     return {
-      device: null,
-      server: null,
-      temperature: null,
-      temperatureFahrenheit: null,
-      pressure: null,
-      pressureInHg: null,
+      isConnected: false,
+      temperatureC: null,
+      temperatureF: null,
+      pressureK: null,
+      pressureH: null,
       humidity: null,
-      altitude: null,
-      altitudeFeet: null,
-      connected: false,
+      altitudeM: null,
+      altitudeF: null,
+      error: null,
     };
   },
   methods: {
-    async connect() {
+    async connectToDevice() {
       try {
-        const serviceUuid = "000002902-0000-1000-8000-00805f9b34fb";
-        const characteristicUuids = {
-          temperature: "2A6E",
-          pressure: "2A6D",
-          humidity: "2A6F",
-          altitude: "2A6C",
-        };
-
         this.device = await navigator.bluetooth.requestDevice({
-          filters: [{ services: [serviceUuid] }],
+          filters: [{ name: 'haddix diy kestrel' }],
+          optionalServices: ['00007171-0000-1000-8000-00805f9b34fb'],
         });
 
         this.server = await this.device.gatt.connect();
-        const service = await this.server.getPrimaryService(serviceUuid);
 
-        this.readCharacteristic(service, characteristicUuids.temperature, 'temperature', 'temperatureFahrenheit', (value) => {
-          return { celsius: value.getFloat32(0, true), fahrenheit: (value.getFloat32(0, true) * 9.0 / 5.0) + 32.0 };
-        });
-        this.readCharacteristic(service, characteristicUuids.pressure, 'pressure', 'pressureInHg', (value) => {
-          const pressure = value.getUint32(0, true) / 10000;
-          return { kPa: pressure, inHg: pressure * 0.2953 };
-        });
-        this.readCharacteristic(service, characteristicUuids.humidity, 'humidity', null, (value) => {
-          return { humidity: value.getInt16(0, true) / 100 };
-        });
-        this.readCharacteristic(service, characteristicUuids.altitude, 'altitude', 'altitudeFeet', (value) => {
-          const altitude = value.getInt16(0, true);
-          return { meters: altitude, feet: altitude * 3.28084 };
-        });
+        const service = await this.server.getPrimaryService(
+          '00007171-0000-1000-8000-00805f9b34fb'
+        );
 
-        this.connected = true;
+        await this.readAllCharacteristics(service);
+        this.isConnected = true;
       } catch (error) {
-        console.error("There was an error:", error);
+        console.error('Failed to connect or read from the device:', error);
+        this.error = 'Failed to connect or read from the device.';
       }
     },
-    async readCharacteristic(service, characteristicUuid, dataField, secondaryField, parser) {
-      const characteristic = await service.getCharacteristic(characteristicUuid);
-      characteristic.startNotifications();
-      characteristic.addEventListener('characteristicvaluechanged', (event) => {
-        const value = event.target.value;
-        const parsedValue = parser(value);
-        this[dataField] = parsedValue[Object.keys(parsedValue)[0]];
-        if (secondaryField) {
-          this[secondaryField] = parsedValue[Object.keys(parsedValue)[1]];
-        }
-      });
+    async readAllCharacteristics(service) {
+      try {
+        await this.readCharacteristic(service, '10009876-0000-1000-8000-00805f9b34fb', 'temperatureC');
+        await this.readCharacteristic(service, '20009876-0000-1000-8000-00805f9b34fb', 'temperatureF');
+        await this.readCharacteristic(service, '30009876-0000-1000-8000-00805f9b34fb', 'pressureK');
+        await this.readCharacteristic(service, '40009876-0000-1000-8000-00805f9b34fb', 'pressureH');
+        await this.readCharacteristic(service, '50009876-0000-1000-8000-00805f9b34fb', 'humidity');
+        await this.readCharacteristic(service, '60009876-0000-1000-8000-00805f9b34fb', 'altitudeF');
+        await this.readCharacteristic(service, '70009876-0000-1000-8000-00805f9b34fb', 'altitudeM');
+      } catch (error) {
+        console.error('Error reading characteristics:', error);
+        this.error = 'Error reading characteristics.';
+      }
+    },
+    async readCharacteristic(service, uuid, property) {
+      try {
+        const characteristic = await service.getCharacteristic(uuid);
+        const value = await characteristic.readValue();
+        this[property] = this.parseValue(value, property);
+
+        characteristic.startNotifications();
+        characteristic.addEventListener('characteristicvaluechanged', (event) => {
+          this[property] = this.parseValue(event.target.value, property);
+        });
+      } catch (error) {
+        console.error(`Failed to read ${property}:`, error);
+        // Optionally handle the error, retry, or perform recovery actions
+        setTimeout(() => {
+          this.readCharacteristic(service, uuid, property);
+        }, 1000); // Retry after 5 seconds
+      }
+    },
+    parseValue(value, property) {
+      let parsedValue;
+      switch (property) {
+        case 'temperatureC':
+        case 'temperatureF':
+        case 'pressureK':
+        case 'pressureH':
+          parsedValue = value.getFloat32(0, true).toFixed(2);
+          break;
+        case 'humidity':
+          parsedValue = value.getFloat32(0, true).toFixed(2);
+          break;
+        case 'altitudeM':
+        case 'altitudeF':
+          parsedValue = value.getFloat32(0, true).toFixed(2);
+          break;
+        default:
+          parsedValue = 'N/A';
+      }
+      return parsedValue;
+    },
+  },
+  computed: {
+    pressureInHg() {
+      return (this.pressureK * 0.2953).toFixed(2);
+    },
+    altitudeFeet() {
+      return (this.altitudeM * 3.28084).toFixed(2);
     },
   },
 };
@@ -89,5 +139,13 @@ export default {
   text-align: center;
   color: #2c3e50;
   margin-top: 60px;
+}
+
+.measurement {
+  padding-right: 20px;
+}
+
+.value {
+  padding-left: 20px;
 }
 </style>
