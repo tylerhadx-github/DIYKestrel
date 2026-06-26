@@ -2,18 +2,42 @@
 <html lang="en">
 
 <head>
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <link rel="icon" href="/favicon.ico" />
+    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DIY Kestrel</title>
+    <title>DIY Kestrel - handheld weather meter that works offline</title>
+    <meta name="description" content="DIYKestrel - an open-source handheld weather meter in a 3D-printed case. Weather readings (temp, pressure, humidity, altitude) over Bluetooth, anywhere, no signal required." />
+    <meta name="theme-color" content="#0b0b10" />
+    <link rel="icon" type="image/png" href="/brand-logo.png" />
+    <link rel="apple-touch-icon" href="/brand-logo.png" />
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
 
-    <meta name="description" content="My description here">
-    <link rel="icon" href="/favicon.ico">
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
-    <link rel="mask-icon" href="/mask-icon.svg" color="#FFFFFF">
-    <meta name="theme-color" content="#ffffff">
-    <link rel="stylesheet" href="https://js.arcgis.com/4.26/esri/css/main.css">
+        html,
+        body,
+        #app {
+            margin: 0;
+            background-color: #0b0b10;
+            color: #f4f4f8;
+        }
 
+        section[id] {
+            scroll-margin-top: 80px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.001ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
 </head>
 
 <body>

@@ -20,48 +20,31 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
+      includeAssets: ['brand-logo.png'],
+      workbox: {
+        // Precache fonts too so the app renders fully offline.
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+      },
       manifest: {
-        name: 'DIYKestrel',
-        short_name: 'DIYKestrel',
-        description: 'ble viewer for atmosphere',
-        theme_color: "#4DBA87",
-        background_color: "#000000",
+        name: 'DIY Kestrel - offline weather meter',
+        short_name: 'DIY Kestrel',
+        description: 'Open-source handheld weather meter in a 3D-printed case. Readings (temp, pressure, humidity, altitude) over Bluetooth, anywhere, no signal required.',
+        theme_color: "#0b0b10",
+        background_color: "#0b0b10",
         display: "standalone",
         icons: [
           {
-            src: 'img/logo.svg',
-            size: '488x424',
-            type: 'image/svg+xml',
-            purpose: "any"
-
-          },
-          {
-            src: 'img/lora.png',
-            size: '512x512',
+            src: 'brand-logo.png',
+            sizes: '512x512',
             type: 'image/png',
             purpose: "any"
           },
           {
-            "src": "./img/icons/android-chrome-192x192.png",
-            "sizes": "192x192",
-            "type": "image/png"
-          },
-          {
-            "src": "./img/icons/android-chrome-512x512.png",
-            "sizes": "512x512",
-            "type": "image/png"
-          },
-          {
-            "src": "./img/icons/android-chrome-maskable-192x192.png",
-            "sizes": "192x192",
-            "type": "image/png",
-            "purpose": "maskable"
-          },
-          {
-            "src": "./img/icons/android-chrome-maskable-512x512.png",
-            "sizes": "512x512",
-            "type": "image/png",
-            "purpose": "maskable"
+            src: 'brand-logo.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: "maskable"
           }
         ]
       }

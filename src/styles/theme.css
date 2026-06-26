@@ -1,0 +1,215 @@
+/**
+ * src/styles/theme.css
+ *
+ * Paintbrush Outdoors theme layer for DIYKestrel.
+ * Dark, motion-driven brand with a green (#3ddc97) app accent and
+ * shared purple support. Tokens, typography, gradient text, pill
+ * buttons and card surfaces live here so components can reuse them.
+ */
+
+:root {
+  /* Surfaces */
+  --pb-bg: #0b0b10;
+  --pb-surface: #14141c;
+  --pb-surface-bright: #1c1c28;
+
+  /* Accents */
+  --pb-primary: #3ddc97;        /* app accent (green) */
+  --pb-primary-darken: #2bb87c;
+  --pb-purple: #7c5cff;         /* shared support */
+  --pb-purple-darken: #6344e6;
+  --pb-purple-light: #b89bff;
+  --pb-info: #5ab0ff;
+  --pb-warning: #ffb454;
+  --pb-error: #ff5d73;
+
+  /* Text */
+  --pb-text: #f4f4f8;
+  --pb-muted: #a7a7b4;
+  --pb-muted-2: #8a8a99;
+
+  /* Lines / surfaces */
+  --pb-hairline: rgba(255, 255, 255, 0.08);
+  --pb-card-fill: rgba(255, 255, 255, 0.025);
+
+  /* Type */
+  --pb-font-display: 'Space Grotesk', system-ui, sans-serif;
+  --pb-font-body: 'Inter', system-ui, sans-serif;
+
+  /* Layout */
+  --pb-maxw: 1180px;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  background-color: var(--pb-bg);
+  color: var(--pb-text);
+  font-family: var(--pb-font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Vuetify's v-application sets its own background; keep it on-brand. */
+.v-application {
+  background: var(--pb-bg) !important;
+  font-family: var(--pb-font-body) !important;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--pb-font-display);
+  letter-spacing: -0.02em;
+}
+
+/* ---- Eyebrow label ---- */
+.pb-eyebrow {
+  display: inline-block;
+  font-family: var(--pb-font-display);
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--pb-primary);
+}
+
+/* ---- Signature gradient word ---- */
+.pb-gradient {
+  background: linear-gradient(120deg, var(--pb-purple), var(--pb-purple-light) 50%, var(--pb-primary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---- Pill buttons ---- */
+.pb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.9rem 1.5rem;
+  border-radius: 999px;
+  font-family: var(--pb-font-body);
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+}
+
+.pb-btn--primary {
+  background: linear-gradient(120deg, var(--pb-primary), var(--pb-primary-darken));
+  color: #06130d;
+  box-shadow: 0 12px 36px rgba(61, 220, 151, 0.35);
+}
+
+.pb-btn--primary:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 48px rgba(61, 220, 151, 0.5);
+}
+
+.pb-btn--ghost {
+  color: var(--pb-text);
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.pb-btn--ghost:hover {
+  transform: translateY(-4px);
+  border-color: rgba(61, 220, 151, 0.7);
+}
+
+.pb-btn .pb-btn__arrow {
+  transition: transform 0.25s ease;
+}
+
+.pb-btn:hover .pb-btn__arrow {
+  transform: translateX(4px);
+}
+
+/* ---- Card surface ---- */
+.pb-card {
+  position: relative;
+  border-radius: 24px;
+  border: 1px solid var(--pb-hairline);
+  background:
+    radial-gradient(120% 120% at 100% 0%, color-mix(in srgb, var(--pb-accent, var(--pb-primary)) 12%, transparent), transparent 45%),
+    var(--pb-card-fill);
+  padding: 1.75rem;
+  overflow: hidden;
+  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.pb-card:hover {
+  transform: translateY(-6px);
+  border-color: color-mix(in srgb, var(--pb-accent, var(--pb-primary)) 60%, transparent);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+/* Purple-accented card variant */
+.pb-card--purple {
+  --pb-accent: var(--pb-purple);
+}
+
+/* ---- Status badges ---- */
+.pb-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--pb-font-display);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.pb-badge__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.pb-badge--live {
+  color: var(--pb-primary);
+  background: rgba(61, 220, 151, 0.12);
+  border-color: rgba(61, 220, 151, 0.35);
+}
+
+.pb-badge--oss {
+  color: var(--pb-purple-light);
+  background: rgba(124, 92, 255, 0.14);
+  border-color: rgba(124, 92, 255, 0.4);
+}
+
+.pb-badge--progress {
+  color: var(--pb-warning);
+  background: rgba(255, 180, 84, 0.12);
+  border-color: rgba(255, 180, 84, 0.38);
+}
+
+.pb-badge--error {
+  color: var(--pb-error);
+  background: rgba(255, 93, 115, 0.12);
+  border-color: rgba(255, 93, 115, 0.4);
+}
+
+/* ---- Section helpers ---- */
+.pb-section {
+  position: relative;
+  padding: clamp(4rem, 9vw, 8rem) 1.25rem;
+}
+
+.pb-section__inner {
+  max-width: var(--pb-maxw);
+  margin: 0 auto;
+}
+
+section[id] {
+  scroll-margin-top: 80px;
+}
