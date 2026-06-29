@@ -1,10 +1,18 @@
 <template>
   <header class="nav" :class="{ 'nav--solid': scrolled }">
     <div class="nav__inner">
-      <a href="#top" class="nav__brand" @click="go($event, '#top')">
-        <img src="/brand-logo.png" alt="Paintbrush Outdoors" class="nav__logo" />
-        <span class="nav__brandtext">DIY<span class="nav__brandaccent">Kestrel</span></span>
-      </a>
+      <div class="nav__brand">
+        <a
+          href="https://paintbrushoutdoors.com"
+          class="nav__brandlogo"
+          aria-label="Paintbrush Outdoors home"
+        >
+          <img src="/brand-logo.png" alt="Paintbrush Outdoors" class="nav__logo" />
+        </a>
+        <a href="#top" class="nav__brandlink" @click="go($event, '#top')">
+          <span class="nav__brandtext"><span class="nav__brandaccent">Kestrel</span></span>
+        </a>
+      </div>
 
       <nav class="nav__links" aria-label="Sections">
         <a
@@ -111,6 +119,12 @@
     display: inline-flex;
     align-items: center;
     gap: 0.6rem;
+  }
+
+  .nav__brandlogo,
+  .nav__brandlink {
+    display: inline-flex;
+    align-items: center;
     text-decoration: none;
     color: #f4f4f8;
   }
