@@ -141,7 +141,7 @@
           </ul>
           <div class="build__total">
             <span>Approx. total</span>
-            <span class="build__totalval">~$35</span>
+            <span class="build__totalval">~$60</span>
           </div>
           <p class="build__note">
             Compare to $300+ for a commercial handheld unit.
@@ -265,10 +265,11 @@
   ]
 
   const bom = [
-    { name: 'Microcontroller w/ BLE (ESP32 class)', cost: '~$8' },
-    { name: 'BME280 temp / pressure / humidity sensor', cost: '~$6' },
-    { name: 'LiPo battery + charger module', cost: '~$9' },
-    { name: 'Wiring, switch & hardware', cost: '~$4' },
+    { name: 'Arduino Nano 33 BLE Sense Rev2 (BLE + onboard temp / pressure / humidity)', cost: '~$40' },
+    { name: 'Custom PCB', cost: '~$5' },
+    { name: 'LiPo battery', cost: '~$8' },
+    { name: 'USB charge controller module (marked 03962a)', cost: '~$2' },
+    { name: 'On/off switch + wiring', cost: '~$3' },
     { name: '3D printed enclosure (filament)', cost: '~$2' },
   ]
 
