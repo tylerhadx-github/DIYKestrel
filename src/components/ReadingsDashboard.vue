@@ -13,15 +13,26 @@
         <span class="dash__hint">{{ statusHint }}</span>
       </div>
 
-      <button
-        v-if="!isConnected"
-        class="pb-btn pb-btn--primary dash__connect"
-        :disabled="connecting || !bluetoothSupported"
-        @click="connectToDevice"
-      >
-        {{ connecting ? 'Connecting...' : 'Connect device' }}
-        <span class="pb-btn__arrow" aria-hidden="true">&#8594;</span>
-      </button>
+      <div class="dash__actions">
+        <button
+          v-if="!isConnected"
+          class="pb-btn pb-btn--primary dash__connect"
+          :disabled="connecting || !bluetoothSupported"
+          @click="connectToDevice"
+        >
+          {{ connecting ? 'Connecting...' : 'Connect device' }}
+          <span class="pb-btn__arrow" aria-hidden="true">&#8594;</span>
+        </button>
+
+        <button
+          v-if="!isConnected && (error || !bluetoothSupported)"
+          class="pb-btn dash__locate"
+          :disabled="locating"
+          @click="useLocationWeather"
+        >
+          {{ locating ? 'Locating...' : 'Use my location' }}
+        </button>
+      </div>
     </div>
 
     <!-- Unsupported / error notices -->
@@ -31,9 +42,14 @@
       page still works fully offline.
     </p>
     <p v-else-if="error" class="dash__notice dash__notice--error">{{ error }}</p>
+    <p v-if="locationError" class="dash__notice dash__notice--error">{{ locationError }}</p>
+    <p v-else-if="hasLocationData" class="dash__notice dash__notice--info">
+      Showing nearest weather data for your location (Open-Meteo), not your
+      device.<span v-if="lastUpdatedLabel"> Updated {{ lastUpdatedLabel }}.</span>
+    </p>
 
     <!-- Live readings grid -->
-    <div class="dash__grid" :class="{ 'dash__grid--idle': !isConnected }">
+    <div class="dash__grid" :class="{ 'dash__grid--idle': !isConnected && !hasLocationData }">
       <article
         v-for="card in cards"
         :key="card.key"
@@ -55,6 +71,8 @@
 </template>
 
 <script>
+const POLL_MS = 5 * 60 * 1000;
+
 export default {
   name: 'ReadingsDashboard',
   data() {
@@ -69,26 +87,47 @@ export default {
       altitudeM: null,
       altitudeF: null,
       error: null,
+      source: null,
+      locating: false,
+      locationError: null,
+      lastUpdated: null,
+      coords: null,
+      pollTimer: null,
     };
   },
   computed: {
     bluetoothSupported() {
       return typeof navigator !== 'undefined' && !!navigator.bluetooth;
     },
+    hasLocationData() {
+      return this.source === 'location';
+    },
+    lastUpdatedLabel() {
+      if (!this.lastUpdated) return '';
+      return new Date(this.lastUpdated).toLocaleTimeString([], {
+        hour: 'numeric',
+        minute: '2-digit',
+      });
+    },
     statusLabel() {
       if (this.isConnected) return 'Live';
       if (this.connecting) return 'Connecting';
+      if (this.locating) return 'Locating';
+      if (this.hasLocationData) return 'Nearest data';
       if (this.error) return 'Error';
       return 'Standby';
     },
     statusBadgeClass() {
       if (this.isConnected) return 'pb-badge--live';
+      if (this.hasLocationData) return 'pb-badge--live';
       if (this.error) return 'pb-badge--error';
       return 'pb-badge--progress';
     },
     statusHint() {
       if (this.isConnected) return 'Streaming over Bluetooth - no signal needed';
       if (this.connecting) return 'Pairing with your Kestrel...';
+      if (this.locating) return 'Finding the nearest weather data...';
+      if (this.hasLocationData) return 'Showing nearest weather data for your location';
       return 'Pair your Kestrel to see live readings';
     },
     cards() {
@@ -159,11 +198,94 @@ export default {
 
         await this.readAllCharacteristics(service);
         this.isConnected = true;
+        this.source = 'device';
+        this.locationError = null;
+        this.stopLocationPolling();
       } catch (error) {
         console.error('Failed to connect or read from the device:', error);
         this.error = 'Failed to connect or read from the device.';
       } finally {
         this.connecting = false;
+      }
+    },
+    async useLocationWeather() {
+      this.locationError = null;
+      if (typeof navigator === 'undefined' || !navigator.geolocation) {
+        this.locationError = 'Location services are not available in this browser.';
+        return;
+      }
+      this.locating = true;
+      try {
+        const position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0,
+          });
+        });
+        this.coords = {
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+        };
+        await this.fetchLocationWeather();
+        this.source = 'location';
+        this.error = null;
+        this.startLocationPolling();
+      } catch (error) {
+        console.error('Failed to load location weather:', error);
+        if (error && error.code === 1) {
+          this.locationError = 'Location permission denied. Allow location access to see nearest weather data.';
+        } else if (error && (error.code === 2 || error.code === 3)) {
+          this.locationError = 'Could not determine your location. Try again with a clearer signal.';
+        } else {
+          this.locationError = 'Could not load nearest weather data. Please try again.';
+        }
+      } finally {
+        this.locating = false;
+      }
+    },
+    async fetchLocationWeather() {
+      if (!this.coords) return;
+      const { lat, lon } = this.coords;
+      const url =
+        'https://api.open-meteo.com/v1/forecast' +
+        `?latitude=${lat}&longitude=${lon}` +
+        '&current=temperature_2m,relative_humidity_2m,surface_pressure' +
+        '&temperature_unit=fahrenheit&timezone=auto';
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Open-Meteo request failed: ${response.status}`);
+      }
+      const data = await response.json();
+      const current = data.current || {};
+
+      if (typeof current.temperature_2m === 'number') {
+        this.temperatureF = current.temperature_2m.toFixed(2);
+      }
+      if (typeof current.relative_humidity_2m === 'number') {
+        this.humidity = current.relative_humidity_2m.toFixed(2);
+      }
+      if (typeof current.surface_pressure === 'number') {
+        this.pressureH = (current.surface_pressure * 0.02953).toFixed(2);
+      }
+      if (typeof data.elevation === 'number') {
+        this.altitudeF = (data.elevation * 3.28084).toFixed(2);
+      }
+      this.lastUpdated = Date.now();
+    },
+    startLocationPolling() {
+      this.stopLocationPolling();
+      this.pollTimer = setInterval(() => {
+        this.fetchLocationWeather().catch((error) => {
+          console.error('Failed to refresh location weather:', error);
+        });
+      }, POLL_MS);
+    },
+    stopLocationPolling() {
+      if (this.pollTimer) {
+        clearInterval(this.pollTimer);
+        this.pollTimer = null;
       }
     },
     async readAllCharacteristics(service) {
@@ -220,6 +342,9 @@ export default {
       return parsedValue;
     },
   },
+  beforeUnmount() {
+    this.stopLocationPolling();
+  },
 };
 </script>
 
@@ -249,11 +374,35 @@ export default {
     font-size: 0.95rem;
   }
 
+  .dash__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
   .dash__connect {
     border: none;
   }
 
   .dash__connect:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .dash__locate {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #d6d6e0;
+  }
+
+  .dash__locate:hover:not(:disabled) {
+    border-color: rgba(255, 255, 255, 0.4);
+    color: #f4f4f8;
+  }
+
+  .dash__locate:disabled {
     opacity: 0.55;
     cursor: not-allowed;
     transform: none;
@@ -278,6 +427,12 @@ export default {
     color: #ff5d73;
     background: rgba(255, 93, 115, 0.1);
     border-color: rgba(255, 93, 115, 0.3);
+  }
+
+  .dash__notice--info {
+    color: #5ab0ff;
+    background: rgba(90, 176, 255, 0.1);
+    border-color: rgba(90, 176, 255, 0.3);
   }
 
   .dash__grid {
